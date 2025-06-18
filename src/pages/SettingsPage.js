@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useSpeech } from '../context/SpeechContext';
 import { useTranslation } from '../translations';
+import Header from '../components/Header/Header';
 import VoiceSelector from '../components/VoiceSelector/VoiceSelector';
 import SpeedControl from '../components/SpeedControl/SpeedControl';
 import { getVoiceDisplayName, getSpeedLabel } from '../utils/textUtils';
@@ -17,14 +19,20 @@ const SettingsPage = () => {
   const { currentLanguage, changeLanguage } = useLanguage();
   const { t } = useTranslation(currentLanguage);
   
-  // Settings state
+  // Global speech context
+  const {
+    speechRate,
+    selectedVoice,
+    handleVoiceSelect,
+    handleSpeedChange
+  } = useSpeech();
+  
+  // Local settings state
   const [voices, setVoices] = useState([]);
-  const [selectedVoice, setSelectedVoice] = useState(null);
-  const [speechRate, setSpeechRate] = useState(1.0);
-  const [showVoiceSelector, setShowVoiceSelector] = useState(false);
-  const [showSpeedControl, setShowSpeedControl] = useState(false);
+  const [showVoiceDropdown, setShowVoiceDropdown] = useState(false);
+  const [showSpeedDropdown, setShowSpeedDropdown] = useState(false);
 
-  // Load voices and settings on mount
+  // Load voices on mount
   useEffect(() => {
     const loadVoices = () => {
       const availableVoices = window.speechSynthesis.getVoices();
@@ -33,63 +41,32 @@ const SettingsPage = () => {
 
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
-
-    // Load saved settings
-    const savedRate = localStorage.getItem('tts-speech-rate');
-    if (savedRate) {
-      try {
-        const rate = parseFloat(savedRate);
-        if (rate >= 0.5 && rate <= 2.0) {
-          setSpeechRate(rate);
-        }
-      } catch (e) {
-        console.error('Error loading speech rate:', e);
-      }
-    }
-
-    const savedVoice = localStorage.getItem('tts-selected-voice');
-    if (savedVoice) {
-      try {
-        const voiceData = JSON.parse(savedVoice);
-        setTimeout(() => {
-          const voice = window.speechSynthesis.getVoices().find(v => v.name === voiceData.name);
-          if (voice) setSelectedVoice(voice);
-        }, 100);
-      } catch (e) {
-        console.error('Error loading voice:', e);
-      }
-    }
   }, []);
 
-  // Save settings when changed
+  // Close dropdowns when clicking outside
   useEffect(() => {
-    localStorage.setItem('tts-speech-rate', speechRate.toString());
-  }, [speechRate]);
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.dropdown-container')) {
+        setShowVoiceDropdown(false);
+        setShowSpeedDropdown(false);
+      }
+    };
 
-  useEffect(() => {
-    if (selectedVoice) {
-      localStorage.setItem('tts-selected-voice', JSON.stringify({
-        name: selectedVoice.name,
-        lang: selectedVoice.lang
-      }));
-    }
-  }, [selectedVoice]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Event handlers
-  const handleVoiceSelect = (voice) => {
-    setSelectedVoice(voice);
-    setShowVoiceSelector(false);
+  const handleVoiceSelectLocal = (voice) => {
+    handleVoiceSelect(voice);
+    setShowVoiceDropdown(false);
   };
 
-  const handleSpeedChange = (newRate) => {
-    if (newRate >= 0.5 && newRate <= 2.0) {
-      setSpeechRate(newRate);
-    }
-  };
-
-  const handleSpeedPreset = (rate) => {
-    setSpeechRate(rate);
-    setShowSpeedControl(false);
+  const handleSpeedChangeLocal = (newRate) => {
+    handleSpeedChange(newRate);
+    setShowSpeedDropdown(false);
   };
 
   const clearAllData = () => {
@@ -98,30 +75,17 @@ const SettingsPage = () => {
       localStorage.removeItem('tts-speech-rate');
       localStorage.removeItem('tts-selected-voice');
       localStorage.removeItem('tts-current-progress');
+      localStorage.removeItem('tts-active-speech');
       localStorage.removeItem('tts-language');
-      setSpeechRate(1.0);
-      setSelectedVoice(null);
+      handleSpeedChange(1.0);
+      handleVoiceSelect(null);
       alert(t('settings.dataCleared'));
     }
   };
 
   return (
     <div className="container">
-      <VoiceSelector
-        show={showVoiceSelector}
-        voices={voices}
-        selectedVoice={selectedVoice}
-        onVoiceSelect={handleVoiceSelect}
-        onClose={() => setShowVoiceSelector(false)}
-      />
-
-      <SpeedControl
-        show={showSpeedControl}
-        speechRate={speechRate}
-        onSpeedChange={handleSpeedChange}
-        onPresetSelect={handleSpeedPreset}
-        onClose={() => setShowSpeedControl(false)}
-      />
+      <Header />
 
       <div className="tts-card">
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
@@ -192,29 +156,97 @@ const SettingsPage = () => {
             <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
               {t('settings.voiceSettings')}
             </h3>
-            <div 
-              onClick={() => setShowVoiceSelector(true)}
-              style={{
-                background: 'var(--bg-light)',
-                border: '1px solid var(--border-light)',
-                borderRadius: '12px',
-                padding: '16px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: '500', color: 'var(--text-primary)', marginBottom: '4px' }}>
-                  Selected Voice
+            <div className="dropdown-container" style={{ position: 'relative' }}>
+              <div 
+                onClick={() => setShowVoiceDropdown(!showVoiceDropdown)}
+                style={{
+                  background: 'var(--bg-light)',
+                  border: '1px solid var(--border-light)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: '500', color: 'var(--text-primary)', marginBottom: '4px' }}>
+                    {t('settings.selectedVoice')}
+                  </div>
+                  <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                    {getVoiceDisplayName(selectedVoice, t)}
+                  </div>
                 </div>
-                <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-                  {getVoiceDisplayName(selectedVoice, t)}
-                </div>
+                <FaChevronRight 
+                  style={{ 
+                    color: 'var(--text-secondary)', 
+                    fontSize: '16px',
+                    transform: showVoiceDropdown ? 'rotate(90deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.2s ease'
+                  }} 
+                />
               </div>
-              <FaChevronRight style={{ color: 'var(--text-secondary)', fontSize: '16px' }} />
+              
+              {showVoiceDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: 'var(--card-bg)',
+                  border: '1px solid var(--border-light)',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 20px var(--shadow-light)',
+                  zIndex: 1000,
+                  marginTop: '4px',
+                  maxHeight: '200px',
+                  overflowY: 'auto'
+                }}>
+                  <div 
+                    onClick={() => handleVoiceSelectLocal(null)}
+                    style={{
+                      padding: '12px 16px',
+                      cursor: 'pointer',
+                      borderBottom: '1px solid var(--border-light)',
+                      backgroundColor: !selectedVoice ? 'var(--bg-light)' : 'transparent',
+                      transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--bg-light)'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = !selectedVoice ? 'var(--bg-light)' : 'transparent'}
+                  >
+                    <div style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
+                      {t('voiceSelector.defaultVoice')}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      {t('voiceSelector.systemDefault')}
+                    </div>
+                  </div>
+                  {voices.map((voice, index) => (
+                    <div 
+                      key={voice.name}
+                      onClick={() => handleVoiceSelectLocal(voice)}
+                      style={{
+                        padding: '12px 16px',
+                        cursor: 'pointer',
+                        borderBottom: index < voices.length - 1 ? '1px solid var(--border-light)' : 'none',
+                        backgroundColor: selectedVoice?.name === voice.name ? 'var(--bg-light)' : 'transparent',
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--bg-light)'}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = selectedVoice?.name === voice.name ? 'var(--bg-light)' : 'transparent'}
+                    >
+                      <div style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
+                        {getVoiceDisplayName(voice, t)}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        {voice.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -223,29 +255,78 @@ const SettingsPage = () => {
             <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
               {t('speedControl.title')}
             </h3>
-            <div 
-              onClick={() => setShowSpeedControl(true)}
-              style={{
-                background: 'var(--bg-light)',
-                border: '1px solid var(--border-light)',
-                borderRadius: '12px',
-                padding: '16px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: '500', color: 'var(--text-primary)', marginBottom: '4px' }}>
-                  Reading Speed
+            <div className="dropdown-container" style={{ position: 'relative' }}>
+              <div 
+                onClick={() => setShowSpeedDropdown(!showSpeedDropdown)}
+                style={{
+                  background: 'var(--bg-light)',
+                  border: '1px solid var(--border-light)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: '500', color: 'var(--text-primary)', marginBottom: '4px' }}>
+                    {t('settings.readingSpeed')}
+                  </div>
+                  <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+                    {speechRate}x - {getSpeedLabel(speechRate, t)}
+                  </div>
                 </div>
-                <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-                  {speechRate}x - {getSpeedLabel(speechRate, t)}
-                </div>
+                <FaChevronRight 
+                  style={{ 
+                    color: 'var(--text-secondary)', 
+                    fontSize: '16px',
+                    transform: showSpeedDropdown ? 'rotate(90deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.2s ease'
+                  }} 
+                />
               </div>
-              <FaChevronRight style={{ color: 'var(--text-secondary)', fontSize: '16px' }} />
+              
+              {showSpeedDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: 'var(--card-bg)',
+                  border: '1px solid var(--border-light)',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 20px var(--shadow-light)',
+                  zIndex: 1000,
+                  marginTop: '4px',
+                  maxHeight: '200px',
+                  overflowY: 'auto'
+                }}>
+                  {[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((rate, index) => (
+                    <div 
+                      key={rate}
+                      onClick={() => handleSpeedChangeLocal(rate)}
+                      style={{
+                        padding: '12px 16px',
+                        cursor: 'pointer',
+                        borderBottom: index < 6 ? '1px solid var(--border-light)' : 'none',
+                        backgroundColor: speechRate === rate ? 'var(--bg-light)' : 'transparent',
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--bg-light)'}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = speechRate === rate ? 'var(--bg-light)' : 'transparent'}
+                    >
+                      <div style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
+                        {rate}x
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        {getSpeedLabel(rate, t)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

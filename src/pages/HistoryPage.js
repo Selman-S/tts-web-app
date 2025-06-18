@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import { useSpeech } from '../context/SpeechContext';
 import { useTranslation } from '../translations';
+import Header from '../components/Header/Header';
 import History from '../components/History/History';
+import { FaArrowLeft } from 'react-icons/fa';
 
 /**
  * History Page component for managing reading history
@@ -91,8 +94,11 @@ const HistoryPage = () => {
     setShowBulkActions(false);
   };
 
+  const { setCurrentText } = useSpeech();
+
   const loadFromHistory = (historyItem) => {
-    // Navigate to home page with text data
+    // Set the text in global context and navigate to home page
+    setCurrentText(historyItem.text);
     navigate('/', { state: { text: historyItem.text } });
   };
 
@@ -105,6 +111,7 @@ const HistoryPage = () => {
 
   return (
     <div className="container">
+      <Header />
       <div className="tts-card">
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
           <button 
@@ -118,7 +125,7 @@ const HistoryPage = () => {
               color: 'var(--text-secondary)'
             }}
           >
-            ←
+            <FaArrowLeft />
           </button>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: 'var(--text-primary)' }}>
             {t('history.title')}

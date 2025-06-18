@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { SpeechProvider } from './context/SpeechContext';
 import HomePage from './pages/HomePage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
@@ -26,15 +27,17 @@ function App() {
 }
 
 /**
- * App wrapper with Language Provider, Theme Provider and Router
+ * App wrapper with all providers and Router
  */
 function AppWithProviders() {
   return (
     <LanguageProvider>
       <ThemeProvider>
-        <Router>
-          <App />
-        </Router>
+        <SpeechProvider>
+          <Router>
+            <App />
+          </Router>
+        </SpeechProvider>
       </ThemeProvider>
     </LanguageProvider>
   );

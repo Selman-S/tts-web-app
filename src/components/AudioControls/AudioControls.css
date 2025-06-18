@@ -141,16 +141,19 @@
   }
 
   .control-group {
-    flex-direction: column;
+    flex-direction: row;
     gap: 8px;
     width: 100%;
+    justify-content: center;
   }
 
   .control-btn {
-    min-width: 180px;
-    padding: 10px 20px;
+    min-width: 120px;
+    padding: 10px 16px;
     font-size: 13px;
     height: 40px;
+    flex: 1;
+    max-width: 140px;
   }
 
   .btn-icon {
@@ -167,11 +170,17 @@
     margin-top: 16px;
   }
 
+  .control-group {
+    gap: 6px;
+  }
+
   .control-btn {
-    min-width: 140px;
-    padding: 8px 16px;
+    min-width: 100px;
+    padding: 8px 12px;
     font-size: 12px;
     height: 36px;
+    flex: 1;
+    max-width: 120px;
   }
 
   .btn-icon {

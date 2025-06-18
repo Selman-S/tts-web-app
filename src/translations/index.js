@@ -46,7 +46,10 @@ export const translations = {
     
     // Current Reading
     currentReading: {
-      reading: 'Okunan'
+      reading: 'Okunan',
+      sentenceNavigation: 'Cümle Geçişi',
+      previousSentence: 'Önceki Cümle',
+      nextSentence: 'Sonraki Cümle'
     },
     
     // Voice Selector
@@ -96,6 +99,8 @@ export const translations = {
       light: 'Açık Tema',
       dark: 'Koyu Tema',
       voiceSettings: 'Ses Ayarları',
+      selectedVoice: 'Seçili Ses',
+      readingSpeed: 'Okuma Hızı',
       dataManagement: 'Veri Yönetimi',
       clearAllData: 'Tüm Verileri Temizle',
       exportData: 'Verileri Dışa Aktar',
@@ -181,7 +186,10 @@ export const translations = {
     
     // Current Reading
     currentReading: {
-      reading: 'Reading'
+      reading: 'Reading',
+      sentenceNavigation: 'Sentence Navigation',
+      previousSentence: 'Previous Sentence',
+      nextSentence: 'Next Sentence'
     },
     
     // Voice Selector
@@ -231,6 +239,8 @@ export const translations = {
       light: 'Light Theme',
       dark: 'Dark Theme',
       voiceSettings: 'Voice Settings',
+      selectedVoice: 'Selected Voice',
+      readingSpeed: 'Reading Speed',
       dataManagement: 'Data Management',
       clearAllData: 'Clear All Data',
       exportData: 'Export Data',
