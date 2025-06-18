@@ -1,23 +1,57 @@
-import logo from './logo.svg';
+import React, { useState } from 'react';
 import './App.css';
 
 function App() {
+  const [text, setText] = useState('');
+  const [error, setError] = useState('');
+  const maxChars = 20000;
+
+  const handleSpeak = () => {
+    if (!('speechSynthesis' in window)) {
+      setError('Tarayıcınız bu özelliği desteklemiyor.');
+      return;
+    }
+    if (text.trim() === '') {
+      setError('Lütfen bir metin girin.');
+      return;
+    }
+    setError('');
+    const utterance = new window.SpeechSynthesisUtterance(text);
+    utterance.lang = 'tr-TR';
+    utterance.rate = 1;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleChange = (e) => {
+    if (e.target.value.length <= maxChars) {
+      setText(e.target.value);
+      setError('');
+    }
+  };
+
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <div className="tts-card">
+        <div className="tts-title">
+          <span role="img" aria-label="speaker">🗣️</span>
+          Yazıyı Sese Çevir
+        </div>
+        {error && <div className="tts-error">{error}</div>}
+        <textarea
+          className="tts-textarea"
+          rows="5"
+          placeholder="Metni buraya girin..."
+          value={text}
+          onChange={handleChange}
+          maxLength={maxChars}
+        />
+        <div className="tts-counter">
+          {text.length} / {maxChars}
+        </div>
+        <button className="tts-btn" onClick={handleSpeak}>
+          Seslendir
+        </button>
+      </div>
     </div>
   );
 }
