@@ -145,6 +145,60 @@ body {
   background: linear-gradient(90deg, #b91c1c 0%, #dc2626 100%);
 }
 
+.tts-current-sentence {
+  background: #f8fafc;
+  border-radius: 1rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.sentence-container {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #1e293b;
+  text-align: left;
+  animation: highlight 0.5s ease-in-out;
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.1) 0%, rgba(129, 140, 248, 0.1) 100%);
+  border-left: 4px solid #6366f1;
+  padding: 0.5rem 1rem;
+}
+
+.highlighted-word {
+  background: linear-gradient(90deg, #6366f1 0%, #818cf8 100%);
+  color: white;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.3rem;
+  display: inline-block;
+  animation: pulse 1s infinite;
+  font-weight: 500;
+  margin: 0 0.1rem;
+}
+
+@keyframes highlight {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 @media (max-width: 600px) {
   .tts-card {
     padding: 1.2rem 0.5rem 1.5rem 0.5rem;
