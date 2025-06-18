@@ -36,7 +36,7 @@
 
 .text-textarea {
   width: 100%;
-  min-height: 120px;
+  min-height: 160px;
   padding: 0;
   border: none;
   border-radius: 0;
@@ -60,26 +60,30 @@
   opacity: 0.7;
 }
 
-.input-footer {
+.char-counter-container {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  justify-content: flex-end;
   margin-top: 12px;
-  flex-wrap: wrap;
-  gap: 12px;
 }
 
 .char-counter {
   font-size: 12px;
   color: var(--text-secondary);
   font-weight: 500;
+  padding: 2px 6px;
+  background: var(--bg-light);
+  border-radius: 4px;
+  border: 1px solid var(--border-light);
 }
 
 .current-settings {
   display: flex;
   gap: 12px;
   align-items: center;
+  justify-content: center;
   flex-wrap: wrap;
+  margin-top: 16px;
+  margin-bottom: 16px;
 }
 
 .setting-item {
@@ -90,6 +94,12 @@
   background: var(--bg-light);
   border-radius: 6px;
   border: 1px solid var(--border-light);
+  transition: all 0.2s ease;
+}
+
+.setting-item:hover {
+  background: var(--white);
+  border-color: var(--primary);
 }
 
 .setting-label {
@@ -111,18 +121,25 @@
   }
 
   .text-textarea {
-    min-height: 80px;
+    min-height: 120px;
     font-size: 14px;
   }
 
-  .input-footer {
-    flex-direction: column;
-    align-items: stretch;
+  .current-settings {
     gap: 8px;
+    margin-top: 12px;
+    margin-bottom: 12px;
   }
 
-  .current-settings {
-    justify-content: center;
+  .setting-item {
+    min-width: auto;
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .setting-label,
+  .setting-value {
+    font-size: 11px;
   }
 }
 
@@ -136,19 +153,33 @@
   }
 
   .text-textarea {
-    min-height: 70px;
+    min-height: 100px;
     font-size: 14px;
-    padding: 10px;
+    padding: 0;
   }
 
   .current-settings {
-    flex-direction: column;
     gap: 6px;
-    align-items: center;
+    flex-wrap: nowrap;
+    margin-top: 10px;
+    margin-bottom: 10px;
   }
 
   .setting-item {
-    width: 100%;
-    justify-content: space-between;
+    min-width: auto;
+    padding: 3px 6px;
+    gap: 3px;
+    flex-shrink: 1;
+    white-space: nowrap;
+  }
+
+  .setting-label,
+  .setting-value {
+    font-size: 10px;
+  }
+
+  .char-counter {
+    font-size: 10px;
+    padding: 1px 4px;
   }
 } 

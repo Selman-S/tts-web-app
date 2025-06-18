@@ -1,4 +1,6 @@
 import React from 'react';
+import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from '../../translations';
 import { MAX_CHARS } from '../../constants';
 import { getVoiceDisplayName } from '../../utils/textUtils';
 import './TextInput.css';
@@ -13,39 +15,42 @@ const TextInput = ({
   selectedVoice,
   speechRate
 }) => {
+  const { currentLanguage } = useLanguage();
+  const { t } = useTranslation(currentLanguage);
   return (
     <section className="text-input-section" aria-label="Metin Girişi">
       {error && <div className="error-message" role="alert" aria-live="polite">{error}</div>}
       
       <div className="input-container">
         <label htmlFor="text-input" className="sr-only">
-          Seslendirilecek metni girin
+          {t('textInput.placeholder')}
         </label>
         <textarea
           id="text-input"
           className="text-textarea"
-          rows="4"
-          placeholder="Enter text here..."
+          rows="6"
+          placeholder={t('textInput.placeholder')}
           value={text}
           onChange={onChange}
           maxLength={MAX_CHARS}
           aria-describedby="char-counter settings-info"
-          aria-label="Seslendirilecek metin"
+          aria-label={t('textInput.placeholder')}
         />
-        <div className="input-footer">
+        <div className="char-counter-container">
           <div id="char-counter" className="char-counter">
-            {text.length} / {MAX_CHARS}
+            {text.length} / {MAX_CHARS} {t('textInput.characterCount')}
           </div>
-          <div id="settings-info" className="current-settings">
-            <div className="setting-item">
-              <span className="setting-label">Ses:</span>
-              <span className="setting-value">{getVoiceDisplayName(selectedVoice)}</span>
-            </div>
-            <div className="setting-item">
-              <span className="setting-label">Hız:</span>
-              <span className="setting-value">{speechRate}x</span>
-            </div>
-          </div>
+        </div>
+      </div>
+      
+      <div id="settings-info" className="current-settings">
+        <div className="setting-item">
+          <span className="setting-label">{t('textInput.voice')}:</span>
+          <span className="setting-value">{getVoiceDisplayName(selectedVoice, t)}</span>
+        </div>
+        <div className="setting-item">
+          <span className="setting-label">{t('textInput.speed')}:</span>
+          <span className="setting-value">{speechRate}x</span>
         </div>
       </div>
     </section>

@@ -53,21 +53,33 @@ export const createPreview = (text, maxLength = 100) => {
 /**
  * Get display name for voice
  * @param {SpeechSynthesisVoice|null} voice - The voice object
+ * @param {function} t - Translation function (optional)
  * @returns {string} Display name
  */
-export const getVoiceDisplayName = (voice) => {
-  if (!voice) return 'Varsayılan Ses';
+export const getVoiceDisplayName = (voice, t = null) => {
+  if (!voice) {
+    return t ? t('voiceSelector.defaultVoice') : 'Default Voice';
+  }
   return voice.name.split(' ')[0] || voice.name;
 };
 
 /**
  * Get speed label based on rate
  * @param {number} rate - Speech rate
+ * @param {function} t - Translation function (optional)
  * @returns {string} Speed label
  */
-export const getSpeedLabel = (rate) => {
-  if (rate <= 0.75) return 'Yavaş';
-  if (rate <= 1.0) return 'Normal';
-  if (rate <= 1.25) return 'Hızlı';
-  return 'Çok Hızlı';
+export const getSpeedLabel = (rate, t = null) => {
+  if (!t) {
+    // Fallback to English
+    if (rate <= 0.75) return 'Slow';
+    if (rate <= 1.0) return 'Normal';
+    if (rate <= 1.25) return 'Fast';
+    return 'Very Fast';
+  }
+  
+  if (rate <= 0.75) return t('speedControl.slow');
+  if (rate <= 1.0) return t('speedControl.normal');
+  if (rate <= 1.25) return t('speedControl.fast');
+  return t('speedControl.veryFast');
 }; 

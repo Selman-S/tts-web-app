@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
+import { useTranslation } from '../translations';
 import Header from '../components/Header/Header';
 import TextInput from '../components/TextInput/TextInput';
 import ProgressBar from '../components/ProgressBar/ProgressBar';
 import CurrentReading from '../components/CurrentReading/CurrentReading';
 import AudioControls from '../components/AudioControls/AudioControls';
-
 import { MAX_CHARS } from '../constants';
 
 /**
@@ -14,6 +15,8 @@ import { MAX_CHARS } from '../constants';
 const HomePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { currentLanguage } = useLanguage();
+  const { t } = useTranslation(currentLanguage);
   
   // Text and UI state
   const [text, setText] = useState('');
@@ -51,7 +54,8 @@ const HomePage = () => {
   useEffect(() => {
     const loadVoices = () => {
       const availableVoices = window.speechSynthesis.getVoices();
-      setVoices(availableVoices.filter(voice => voice.lang.startsWith('tr')));
+      const langPrefix = currentLanguage === 'en' ? 'en' : 'tr';
+      setVoices(availableVoices.filter(voice => voice.lang.startsWith(langPrefix)));
     };
 
     loadVoices();
@@ -83,7 +87,7 @@ const HomePage = () => {
         console.error('Error loading voice:', e);
       }
     }
-  }, []);
+  }, [currentLanguage]);
 
   // Save settings when changed
   useEffect(() => {
@@ -172,7 +176,7 @@ const HomePage = () => {
     setCurrentSentenceIndex(startIndex);
 
     const utterance = new window.SpeechSynthesisUtterance(trimmedSentence);
-    utterance.lang = 'tr-TR';
+    utterance.lang = currentLanguage === 'en' ? 'en-US' : 'tr-TR';
     utterance.rate = speechRate;
     if (selectedVoice) {
       utterance.voice = selectedVoice;
@@ -231,11 +235,11 @@ const HomePage = () => {
 
   const handleSpeak = () => {
     if (!('speechSynthesis' in window)) {
-      setError('Tarayıcınız bu özelliği desteklemiyor.');
+      setError(t('textInput.browserNotSupported'));
       return;
     }
     if (!text || text.trim() === '') {
-      setError('Lütfen bir metin girin.');
+      setError(t('textInput.enterText'));
       return;
     }
     
@@ -257,7 +261,7 @@ const HomePage = () => {
     addToHistory(text);
     const textSentences = splitIntoSentences(text);
     if (textSentences.length === 0) {
-      setError('Lütfen geçerli bir metin girin.');
+      setError(t('textInput.validTextRequired'));
       return;
     }
 

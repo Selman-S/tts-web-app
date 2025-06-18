@@ -1,4 +1,6 @@
 import React from 'react';
+import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from '../../translations';
 import { CATEGORIES } from '../../constants';
 import './History.css';
 
@@ -24,6 +26,9 @@ const History = ({
   onLoadFromHistory,
   onClearHistory
 }) => {
+  const { currentLanguage } = useLanguage();
+  const { t } = useTranslation(currentLanguage);
+  
   if (!show) return null;
 
   // Filter history based on search and category
@@ -51,7 +56,11 @@ const History = ({
   };
 
   const getCategoryInfo = (categoryId) => {
-    return CATEGORIES.find(cat => cat.id === categoryId) || CATEGORIES.find(cat => cat.id === 'other');
+    const category = CATEGORIES.find(cat => cat.id === categoryId) || CATEGORIES.find(cat => cat.id === 'other');
+    return {
+      ...category,
+      name: t(`categories.${category.id}`)
+    };
   };
 
   const filteredHistory = getFilteredHistory();
@@ -59,21 +68,21 @@ const History = ({
   return (
     <div className="history-panel">
       <div className="history-header">
-        <h3>Geçmiş</h3>
+        <h3>{t('history.title')}</h3>
         {!showBulkActions ? (
           <button onClick={onClearHistory} className="clear-btn">
-            Temizle
+            {t('history.clear')}
           </button>
         ) : (
           <div className="bulk-actions">
             <button onClick={onBulkDelete} className="bulk-btn danger">
-              Sil ({selectedItems.size})
+              {t('history.delete')} ({selectedItems.size})
             </button>
             <button onClick={onBulkToggleFavorite} className="bulk-btn">
               ⭐
             </button>
             <button onClick={onDeselectAllItems} className="bulk-btn secondary">
-              İptal
+              {t('history.cancel')}
             </button>
           </div>
         )}
@@ -83,7 +92,7 @@ const History = ({
         <div className="search-container">
           <input
             type="text"
-            placeholder="Ara..."
+            placeholder={t('history.search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-input"
@@ -96,18 +105,18 @@ const History = ({
           onChange={(e) => setSelectedCategory(e.target.value)}
           className="category-select"
         >
-          <option value="all">Tümü</option>
-          <option value="favorites">⭐ Favoriler</option>
+          <option value="all">{t('history.all')}</option>
+          <option value="favorites">⭐ {t('history.favorites')}</option>
           {CATEGORIES.map(cat => (
             <option key={cat.id} value={cat.id}>
-              {cat.icon} {cat.name}
+              {cat.icon} {t(`categories.${cat.id}`)}
             </option>
           ))}
         </select>
 
         {filteredHistory.length > 0 && (
           <button onClick={onSelectAllItems} className="select-all-btn">
-            Tümünü Seç
+            {t('history.selectAll')}
           </button>
         )}
       </div>
@@ -116,8 +125,8 @@ const History = ({
         {filteredHistory.length === 0 ? (
           <p className="no-history">
             {searchQuery || selectedCategory !== 'all' 
-              ? 'Sonuç bulunamadı' 
-              : 'Henüz geçmiş yok'
+              ? t('history.noResults')
+              : t('history.noHistory')
             }
           </p>
         ) : (
@@ -148,7 +157,7 @@ const History = ({
                 <div className="history-meta">
                   <div className="meta-info">
                     <span className="history-date">{item.timestamp}</span>
-                    <span className="word-count">{item.wordCount} kelime</span>
+                    <span className="word-count">{item.wordCount} {t('history.words')}</span>
                   </div>
                   <div className="item-actions">
                     <select
@@ -159,7 +168,7 @@ const History = ({
                     >
                       {CATEGORIES.map(cat => (
                         <option key={cat.id} value={cat.id}>
-                          {cat.icon} {cat.name}
+                          {cat.icon} {t(`categories.${cat.id}`)}
                         </option>
                       ))}
                     </select>
@@ -167,7 +176,7 @@ const History = ({
                       onClick={() => onLoadFromHistory(item)}
                       className="load-btn"
                     >
-                      Yükle
+                      {t('history.load')}
                     </button>
                   </div>
                 </div>

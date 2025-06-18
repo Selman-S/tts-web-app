@@ -1,14 +1,18 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from '../../translations';
 import './BottomNavigation.css';
 
 /**
- * Bottom Navigation component with routing
+ * Bottom Navigation component with routing and language support
  * Similar to mobile app design
  */
 const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { currentLanguage } = useLanguage();
+  const { t } = useTranslation(currentLanguage);
 
   const isActive = (path) => location.pathname === path;
 
@@ -17,28 +21,28 @@ const BottomNavigation = () => {
       <button 
         className={`nav-item ${isActive('/') ? 'active' : ''}`}
         onClick={() => navigate('/')}
-        title="Ana Sayfa"
+        title={t('nav.home')}
       >
         <span className="nav-icon">🏠</span>
-        <span className="nav-label">Home</span>
+        <span className="nav-label">{t('nav.home')}</span>
       </button>
 
       <button 
         className={`nav-item ${isActive('/history') ? 'active' : ''}`}
         onClick={() => navigate('/history')}
-        title="Geçmiş"
+        title={t('nav.history')}
       >
         <span className="nav-icon">📚</span>
-        <span className="nav-label">History</span>
+        <span className="nav-label">{t('nav.history')}</span>
       </button>
 
       <button 
         className={`nav-item ${isActive('/settings') ? 'active' : ''}`}
         onClick={() => navigate('/settings')}
-        title="Ayarlar"
+        title={t('nav.settings')}
       >
         <span className="nav-icon">⚙️</span>
-        <span className="nav-label">Settings</span>
+        <span className="nav-label">{t('nav.settings')}</span>
       </button>
     </nav>
   );

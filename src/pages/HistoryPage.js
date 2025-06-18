@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
+import { useTranslation } from '../translations';
 import History from '../components/History/History';
 
 /**
@@ -7,6 +9,8 @@ import History from '../components/History/History';
  */
 const HistoryPage = () => {
   const navigate = useNavigate();
+  const { currentLanguage } = useLanguage();
+  const { t } = useTranslation(currentLanguage);
   
   // History state
   const [history, setHistory] = useState([]);
@@ -117,7 +121,7 @@ const HistoryPage = () => {
             ←
           </button>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: 'var(--text-primary)' }}>
-            Reading History
+            {t('history.title')}
           </h1>
         </div>
 

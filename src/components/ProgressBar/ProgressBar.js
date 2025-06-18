@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from '../../translations';
 import './ProgressBar.css';
 
 /**
@@ -14,6 +16,8 @@ const ProgressBar = ({
   startTime,
   show = true
 }) => {
+  const { currentLanguage } = useLanguage();
+  const { t } = useTranslation(currentLanguage);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [wordsPerMinute, setWordsPerMinute] = useState(0);
 
@@ -71,7 +75,7 @@ const ProgressBar = ({
         <div className="progress-stats">
           <span className="stat-item">
             <span className="stat-icon">📖</span>
-            <span className="stat-text">{currentSentenceIndex} / {totalSentences}</span>
+            <span className="stat-text">{currentSentenceIndex} {t('progressBar.of')} {totalSentences}</span>
           </span>
           <span className="stat-item">
             <span className="stat-icon">⏱️</span>
@@ -79,11 +83,11 @@ const ProgressBar = ({
           </span>
           <span className="stat-item">
             <span className="stat-icon">📊</span>
-            <span className="stat-text">{wordsPerMinute} WPM</span>
+            <span className="stat-text">{wordsPerMinute} {t('progressBar.wordsPerMinute')}</span>
           </span>
           <span className="stat-item">
             <span className="stat-icon">🎯</span>
-            <span className="stat-text">~{estimatedMinutes}dk</span>
+            <span className="stat-text">~{estimatedMinutes}{t('progressBar.estimatedTime')}</span>
           </span>
         </div>
         <div className="progress-percentage">
@@ -110,8 +114,8 @@ const ProgressBar = ({
       </div>
       
       <div className="progress-labels">
-        <span className="progress-label start">Elapsed Time</span>
-        <span className="progress-label end">{formatTime(elapsedTime)} / {estimatedMinutes}:00</span>
+        <span className="progress-label start">{t('progressBar.elapsedTime')}</span>
+        <span className="progress-label end">{formatTime(elapsedTime)} {t('progressBar.of')} {estimatedMinutes}:00</span>
       </div>
     </div>
   );

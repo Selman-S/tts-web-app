@@ -1,4 +1,6 @@
 import React from 'react';
+import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from '../../translations';
 import './AudioControls.css';
 
 /**
@@ -12,6 +14,8 @@ const AudioControls = ({
   onResume,
   onStop
 }) => {
+  const { currentLanguage } = useLanguage();
+  const { t } = useTranslation(currentLanguage);
   return (
     <section className="audio-controls" aria-label="Ses Kontrolleri">
       <div className="primary-controls">
@@ -19,11 +23,11 @@ const AudioControls = ({
           <button 
             className="control-btn primary" 
             onClick={onSpeak}
-            aria-label="Metni seslendir"
+            aria-label={t('audioControls.speakAriaLabel')}
             type="button"
           >
             <span className="btn-icon" aria-hidden="true">▶️</span> 
-            <span className="btn-text">Seslendir</span>
+            <span className="btn-text">{t('audioControls.speak')}</span>
           </button>
         ) : (
           <div className="control-group" role="group" aria-label="Oynatma kontrolleri">
@@ -31,31 +35,31 @@ const AudioControls = ({
               <button 
                 className="control-btn success" 
                 onClick={onResume}
-                aria-label="Seslendirmeye devam et"
+                aria-label={t('audioControls.resumeAriaLabel')}
                 type="button"
               >
                 <span className="btn-icon" aria-hidden="true">▶️</span> 
-                <span className="btn-text">Devam Et</span>
+                <span className="btn-text">{t('audioControls.resume')}</span>
               </button>
             ) : (
               <button 
                 className="control-btn warning" 
                 onClick={onPause}
-                aria-label="Seslendirmeyi duraklat"
+                aria-label={t('audioControls.pauseAriaLabel')}
                 type="button"
               >
                 <span className="btn-icon" aria-hidden="true">⏸️</span> 
-                <span className="btn-text">Duraklat</span>
+                <span className="btn-text">{t('audioControls.pause')}</span>
               </button>
             )}
             <button 
               className="control-btn danger" 
               onClick={onStop}
-              aria-label="Seslendirmeyi durdur"
+              aria-label={t('audioControls.stopAriaLabel')}
               type="button"
             >
               <span className="btn-icon" aria-hidden="true">⏹️</span> 
-              <span className="btn-text">Durdur</span>
+              <span className="btn-text">{t('audioControls.stop')}</span>
             </button>
           </div>
         )}

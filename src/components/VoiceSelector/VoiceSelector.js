@@ -1,4 +1,6 @@
 import React from 'react';
+import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from '../../translations';
 import { getVoiceDisplayName } from '../../utils/textUtils';
 import './VoiceSelector.css';
 
@@ -12,12 +14,15 @@ const VoiceSelector = ({
   onVoiceSelect, 
   onClose 
 }) => {
+  const { currentLanguage } = useLanguage();
+  const { t } = useTranslation(currentLanguage);
+  
   if (!show) return null;
 
   return (
     <div className="voice-selector-panel">
       <div className="voice-selector-header">
-        <h3>Ses Seçimi</h3>
+        <h3>{t('voiceSelector.title')}</h3>
         <button onClick={onClose} className="close-btn">
           ✕
         </button>
@@ -28,8 +33,8 @@ const VoiceSelector = ({
           onClick={() => onVoiceSelect(null)}
         >
           <div className="voice-info">
-            <span className="voice-name">Varsayılan Ses</span>
-            <span className="voice-desc">Sistem varsayılan sesi</span>
+            <span className="voice-name">{t('voiceSelector.defaultVoice')}</span>
+            <span className="voice-desc">{t('voiceSelector.systemDefault')}</span>
           </div>
           {!selectedVoice && <span className="check-mark">✓</span>}
         </div>
@@ -40,7 +45,7 @@ const VoiceSelector = ({
             onClick={() => onVoiceSelect(voice)}
           >
             <div className="voice-info">
-              <span className="voice-name">{getVoiceDisplayName(voice)}</span>
+              <span className="voice-name">{getVoiceDisplayName(voice, t)}</span>
               <span className="voice-desc">{voice.name}</span>
             </div>
             {selectedVoice?.name === voice.name && <span className="check-mark">✓</span>}

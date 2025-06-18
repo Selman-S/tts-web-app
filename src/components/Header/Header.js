@@ -1,5 +1,7 @@
 import React from 'react';
 import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { useTranslation } from '../../translations';
 import { getVoiceDisplayName, getSpeedLabel } from '../../utils/textUtils';
 import './Header.css';
 
@@ -20,11 +22,13 @@ const Header = ({
   onResume
 }) => {
   const { isDarkMode, toggleTheme } = useTheme();
+  const { currentLanguage } = useLanguage();
+  const { t } = useTranslation(currentLanguage);
 
   return (
     <header className="tts-header" role="banner">
       <h1 className="tts-title">
-        Text to Speech
+        {t('appTitle')}
       </h1>
     </header>
   );

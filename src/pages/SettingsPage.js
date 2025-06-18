@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
+import { useTranslation } from '../translations';
 import VoiceSelector from '../components/VoiceSelector/VoiceSelector';
 import SpeedControl from '../components/SpeedControl/SpeedControl';
 import { getVoiceDisplayName, getSpeedLabel } from '../utils/textUtils';
@@ -11,6 +13,8 @@ import { getVoiceDisplayName, getSpeedLabel } from '../utils/textUtils';
 const SettingsPage = () => {
   const navigate = useNavigate();
   const { isDarkMode, toggleTheme } = useTheme();
+  const { currentLanguage, changeLanguage } = useLanguage();
+  const { t } = useTranslation(currentLanguage);
   
   // Settings state
   const [voices, setVoices] = useState([]);
@@ -88,15 +92,15 @@ const SettingsPage = () => {
   };
 
   const clearAllData = () => {
-    if (window.confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
+    if (window.confirm(t('settings.confirmClearData'))) {
       localStorage.removeItem('tts-history');
       localStorage.removeItem('tts-speech-rate');
       localStorage.removeItem('tts-selected-voice');
       localStorage.removeItem('tts-current-progress');
-      localStorage.removeItem('gesture-hint-shown');
+      localStorage.removeItem('tts-language');
       setSpeechRate(1.0);
       setSelectedVoice(null);
-      alert('All data has been cleared.');
+      alert(t('settings.dataCleared'));
     }
   };
 
@@ -134,15 +138,58 @@ const SettingsPage = () => {
             ←
           </button>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: 'var(--text-primary)' }}>
-            Settings
+            {t('settings.title')}
           </h1>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Language Settings */}
+          <div className="setting-section">
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
+              {t('settings.languageSelection')}
+            </h3>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => changeLanguage('tr')}
+                style={{
+                  flex: 1,
+                  background: currentLanguage === 'tr' ? 'var(--primary)' : 'var(--bg-light)',
+                  color: currentLanguage === 'tr' ? 'white' : 'var(--text-primary)',
+                  border: `1px solid ${currentLanguage === 'tr' ? 'var(--primary)' : 'var(--border-light)'}`,
+                  borderRadius: '12px',
+                  padding: '16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                🇹🇷 {t('settings.turkish')}
+              </button>
+              <button
+                onClick={() => changeLanguage('en')}
+                style={{
+                  flex: 1,
+                  background: currentLanguage === 'en' ? 'var(--primary)' : 'var(--bg-light)',
+                  color: currentLanguage === 'en' ? 'white' : 'var(--text-primary)',
+                  border: `1px solid ${currentLanguage === 'en' ? 'var(--primary)' : 'var(--border-light)'}`,
+                  borderRadius: '12px',
+                  padding: '16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                🇺🇸 {t('settings.english')}
+              </button>
+            </div>
+          </div>
+
           {/* Voice Settings */}
           <div className="setting-section">
             <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
-              Voice Settings
+              {t('settings.voiceSettings')}
             </h3>
             <div 
               onClick={() => setShowVoiceSelector(true)}
@@ -163,7 +210,7 @@ const SettingsPage = () => {
                   Selected Voice
                 </div>
                 <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-                  {getVoiceDisplayName(selectedVoice)}
+                  {getVoiceDisplayName(selectedVoice, t)}
                 </div>
               </div>
               <span style={{ color: 'var(--text-secondary)', fontSize: '18px' }}>›</span>
@@ -173,7 +220,7 @@ const SettingsPage = () => {
           {/* Speed Settings */}
           <div className="setting-section">
             <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
-              Speed Settings
+              {t('speedControl.title')}
             </h3>
             <div 
               onClick={() => setShowSpeedControl(true)}
@@ -194,7 +241,7 @@ const SettingsPage = () => {
                   Reading Speed
                 </div>
                 <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-                  {speechRate}x - {getSpeedLabel(speechRate)}
+                  {speechRate}x - {getSpeedLabel(speechRate, t)}
                 </div>
               </div>
               <span style={{ color: 'var(--text-secondary)', fontSize: '18px' }}>›</span>
@@ -204,7 +251,7 @@ const SettingsPage = () => {
           {/* Theme Settings */}
           <div className="setting-section">
             <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
-              Theme Settings
+              {t('settings.themeSelection')}
             </h3>
             <div 
               onClick={toggleTheme}
@@ -222,10 +269,10 @@ const SettingsPage = () => {
             >
               <div>
                 <div style={{ fontWeight: '500', color: 'var(--text-primary)', marginBottom: '4px' }}>
-                  App Theme
+                  {t('settings.theme')}
                 </div>
                 <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-                  {isDarkMode ? 'Dark Mode' : 'Light Mode'}
+                  {isDarkMode ? t('settings.dark') : t('settings.light')}
                 </div>
               </div>
               <span style={{ fontSize: '20px' }}>
@@ -237,7 +284,7 @@ const SettingsPage = () => {
           {/* Data Management */}
           <div className="setting-section">
             <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
-              Data Management
+              {t('settings.dataManagement')}
             </h3>
             <div 
               onClick={clearAllData}
@@ -255,10 +302,10 @@ const SettingsPage = () => {
             >
               <div>
                 <div style={{ fontWeight: '500', color: 'var(--danger)', marginBottom: '4px' }}>
-                  Clear All Data
+                  {t('settings.clearAllData')}
                 </div>
                 <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-                  Delete history, settings, and progress
+                  {t('settings.confirmClearData')}
                 </div>
               </div>
               <span style={{ color: 'var(--danger)', fontSize: '18px' }}>🗑️</span>
@@ -268,7 +315,7 @@ const SettingsPage = () => {
           {/* App Info */}
           <div className="setting-section">
             <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
-              App Information
+              {t('settings.about')}
             </h3>
             <div style={{
               background: 'var(--bg-light)',
@@ -277,16 +324,16 @@ const SettingsPage = () => {
               padding: '16px'
             }}>
               <div style={{ marginBottom: '8px' }}>
-                <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>Version:</span>
+                <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>{t('settings.version')}:</span>
                 <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>1.0.0</span>
               </div>
               <div style={{ marginBottom: '8px' }}>
                 <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>Features:</span>
-                <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>TTS, History, Touch Gestures</span>
+                <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>TTS, History, Progress</span>
               </div>
               <div>
-                <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>Languages:</span>
-                <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>Turkish</span>
+                <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>{t('settings.language')}:</span>
+                <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>Türkçe / English</span>
               </div>
             </div>
           </div>
