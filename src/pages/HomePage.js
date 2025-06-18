@@ -5,7 +5,7 @@ import TextInput from '../components/TextInput/TextInput';
 import ProgressBar from '../components/ProgressBar/ProgressBar';
 import CurrentReading from '../components/CurrentReading/CurrentReading';
 import AudioControls from '../components/AudioControls/AudioControls';
-import GestureHelper from '../components/GestureHelper/GestureHelper';
+
 import { MAX_CHARS } from '../constants';
 
 /**
@@ -35,6 +35,8 @@ const HomePage = () => {
   const [sentences, setSentences] = useState([]);
   const [startTime, setStartTime] = useState(null);
   const [totalWords, setTotalWords] = useState(0);
+  
+
 
   // Load text from history if passed via navigation
   useEffect(() => {
@@ -197,8 +199,23 @@ const HomePage = () => {
     };
 
     utterance.onerror = (event) => {
-      console.error('Speech synthesis error:', event);
-      handleStop();
+      // Only log actual errors, not interruptions
+      if (event.error !== 'interrupted') {
+        console.error('Speech synthesis error:', event);
+      }
+      
+      // Handle different error types
+      if (event.error === 'interrupted') {
+        // Interrupted is normal when user stops/changes speech
+        return;
+      } else if (event.error === 'canceled') {
+        // Canceled is normal when user stops speech
+        return;
+      } else {
+        // Other errors should stop the speech
+        console.error('Unexpected speech synthesis error:', event.error);
+        handleStop();
+      }
     };
 
     window.speechSynthesis.speak(utterance);
@@ -221,6 +238,20 @@ const HomePage = () => {
       setError('Lütfen bir metin girin.');
       return;
     }
+    
+    // Stop any currently playing speech before starting new one
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+      window.speechSynthesis.cancel();
+      // Wait a moment for the cancellation to complete
+      setTimeout(() => {
+        startSpeaking();
+      }, 100);
+    } else {
+      startSpeaking();
+    }
+  };
+
+  const startSpeaking = () => {
     setError('');
 
     addToHistory(text);
@@ -243,17 +274,26 @@ const HomePage = () => {
   };
 
   const handlePause = () => {
-    window.speechSynthesis.pause();
-    setIsPaused(true);
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.pause();
+      setIsPaused(true);
+    }
   };
 
   const handleResume = () => {
-    window.speechSynthesis.resume();
-    setIsPaused(false);
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+      setIsPaused(false);
+    }
   };
 
   const handleStop = () => {
-    window.speechSynthesis.cancel();
+    // Cancel speech synthesis if it's currently speaking
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+      window.speechSynthesis.cancel();
+    }
+    
+    // Reset all state
     setIsSpeaking(false);
     setIsPaused(false);
     setCurrentSentence('');
@@ -263,45 +303,10 @@ const HomePage = () => {
     setTotalWords(0);
   };
 
-  // Gesture navigation functions
-  const handlePreviousSentence = () => {
-    if (currentSentenceIndex > 0) {
-      const newIndex = currentSentenceIndex - 1;
-      setCurrentSentenceIndex(newIndex);
-      window.speechSynthesis.cancel();
-      speakFromIndex(sentences, newIndex);
-    }
-  };
 
-  const handleNextSentence = () => {
-    if (currentSentenceIndex < sentences.length - 1) {
-      const newIndex = currentSentenceIndex + 1;
-      setCurrentSentenceIndex(newIndex);
-      window.speechSynthesis.cancel();
-      speakFromIndex(sentences, newIndex);
-    }
-  };
-
-  const handleRestartSentence = () => {
-    if (sentences.length > 0) {
-      window.speechSynthesis.cancel();
-      speakFromIndex(sentences, currentSentenceIndex);
-    }
-  };
 
   return (
-    <GestureHelper
-      isSpeaking={isSpeaking}
-      isPaused={isPaused}
-      currentSentenceIndex={currentSentenceIndex}
-      totalSentences={sentences.length}
-      onPause={handlePause}
-      onResume={handleResume}
-      onStop={handleStop}
-      onPreviousSentence={handlePreviousSentence}
-      onNextSentence={handleNextSentence}
-      onRestartSentence={handleRestartSentence}
-    >
+    <div className="container">
       <main className="tts-card" role="main" itemScope itemType="https://schema.org/WebApplication">
         <Header />
 
@@ -342,7 +347,7 @@ const HomePage = () => {
           onStop={handleStop}
         />
       </main>
-    </GestureHelper>
+    </div>
   );
 };
 

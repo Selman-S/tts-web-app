@@ -29,20 +29,10 @@
   - [x] Add visual progress for long texts
 
 ### 📱 Mobile Experience
-- [x] **Touch Gestures** ⭐⭐ ☑️
-  - [x] Swipe left/right for previous/next sentence
-  - [x] Tap to pause/resume
-  - [x] Double-tap to restart current sentence
-  - [x] Long press for options menu
 
 ## 🎯 Short-term Goals (Next Month)
 
 ### 🔊 Audio Enhancements
-- [ ] **Audio Export** ⭐⭐
-  - [ ] Generate MP3 files from text
-  - [ ] Add download functionality
-  - [ ] Implement batch export
-  - [ ] Quality selection options
 
 - [ ] **Voice Improvements** ⭐⭐
   - [ ] Add voice preview functionality
@@ -199,13 +189,13 @@
 - Audio speed control
 - Dark mode implementation
 - Search functionality
-- Mobile touch gestures
+- Mobile responsive design
 
 ### Week 3-4: Enhancement
 - Progress visualization
-- Audio export feature
-- Reading statistics
 - Voice improvements
+- Reading statistics
+- Advanced features
 
 ### Week 5-6: Polish
 - PWA implementation

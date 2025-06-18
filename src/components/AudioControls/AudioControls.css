@@ -1,10 +1,24 @@
 /* Audio Controls */
 .audio-controls {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
   gap: 16px;
   margin-top: 32px;
+}
+
+.primary-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+}
+
+.secondary-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
 }
 
 .control-group {
@@ -113,9 +127,11 @@
   transform: translateY(-1px);
 }
 
+
+
 /* Mobile responsive */
 @media (max-width: 768px) {
-  .audio-controls {
+  .primary-controls {
     flex-direction: column;
     gap: 10px;
   }
