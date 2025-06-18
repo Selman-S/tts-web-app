@@ -8,6 +8,7 @@ import TextInput from './components/TextInput/TextInput';
 import CurrentReading from './components/CurrentReading/CurrentReading';
 import AudioControls from './components/AudioControls/AudioControls';
 import ProgressBar from './components/ProgressBar/ProgressBar';
+import GestureHelper from './components/GestureHelper/GestureHelper';
 import { MAX_CHARS } from './constants';
 import './App.css';
 
@@ -376,10 +377,48 @@ function App() {
     localStorage.removeItem('tts-history');
   };
 
+  // Gesture navigation functions
+  const handlePreviousSentence = () => {
+    if (currentSentenceIndex > 0) {
+      const newIndex = currentSentenceIndex - 1;
+      setCurrentSentenceIndex(newIndex);
+      window.speechSynthesis.cancel();
+      speakFromIndex(sentences, newIndex);
+    }
+  };
+
+  const handleNextSentence = () => {
+    if (currentSentenceIndex < sentences.length - 1) {
+      const newIndex = currentSentenceIndex + 1;
+      setCurrentSentenceIndex(newIndex);
+      window.speechSynthesis.cancel();
+      speakFromIndex(sentences, newIndex);
+    }
+  };
+
+  const handleRestartSentence = () => {
+    if (sentences.length > 0) {
+      window.speechSynthesis.cancel();
+      speakFromIndex(sentences, currentSentenceIndex);
+    }
+  };
+
   return (
     <div className="App">
       <div className="container">
-        <main className="tts-card" role="main" itemScope itemType="https://schema.org/WebApplication">
+        <GestureHelper
+          isSpeaking={isSpeaking}
+          isPaused={isPaused}
+          currentSentenceIndex={currentSentenceIndex}
+          totalSentences={sentences.length}
+          onPause={handlePause}
+          onResume={handleResume}
+          onStop={handleStop}
+          onPreviousSentence={handlePreviousSentence}
+          onNextSentence={handleNextSentence}
+          onRestartSentence={handleRestartSentence}
+        >
+          <main className="tts-card" role="main" itemScope itemType="https://schema.org/WebApplication">
           <Header
             showSpeedControl={showSpeedControl}
             setShowSpeedControl={setShowSpeedControl}
@@ -466,6 +505,7 @@ function App() {
             onStop={handleStop}
           />
         </main>
+        </GestureHelper>
       </div>
     </div>
   );

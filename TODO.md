@@ -22,11 +22,11 @@
   - [x] Add theme toggle button
   - [x] Remember user's theme preference
 
-- [ ] **Progress Visualization** ⭐⭐
-  - [ ] Add overall reading progress bar
-  - [ ] Show estimated reading time
-  - [ ] Display words per minute calculation
-  - [ ] Add visual progress for long texts
+- [x] **Progress Visualization** ⭐⭐ ☑️
+  - [x] Add overall reading progress bar
+  - [x] Show estimated reading time
+  - [x] Display words per minute calculation
+  - [x] Add visual progress for long texts
 
 ### 📱 Mobile Experience
 - [ ] **Touch Gestures** ⭐⭐
