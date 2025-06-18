@@ -6,6 +6,8 @@ function App() {
   const [error, setError] = useState('');
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const maxChars = 50000;
 
   // Seslendirme seçeneklerini yükleme
@@ -36,7 +38,34 @@ function App() {
     if (selectedVoice) {
       utterance.voice = selectedVoice;
     }
+
+    // Konuşma bittiğinde state'i güncelle
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      setIsPaused(false);
+    };
+
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+    };
+
     window.speechSynthesis.speak(utterance);
+  };
+
+  const handlePause = () => {
+    window.speechSynthesis.pause();
+    setIsPaused(true);
+  };
+
+  const handleResume = () => {
+    window.speechSynthesis.resume();
+    setIsPaused(false);
+  };
+
+  const handleStop = () => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+    setIsPaused(false);
   };
 
   const handleChange = (e) => {
@@ -80,9 +109,28 @@ function App() {
             </option>
           ))}
         </select>
-        <button className="tts-btn" onClick={handleSpeak}>
-          Seslendir
-        </button>
+        <div className="tts-controls">
+          {!isSpeaking ? (
+            <button className="tts-btn" onClick={handleSpeak}>
+              <span role="img" aria-label="play">▶️</span> Seslendir
+            </button>
+          ) : (
+            <>
+              {isPaused ? (
+                <button className="tts-btn" onClick={handleResume}>
+                  <span role="img" aria-label="resume">▶️</span> Devam Et
+                </button>
+              ) : (
+                <button className="tts-btn pause" onClick={handlePause}>
+                  <span role="img" aria-label="pause">⏸️</span> Duraklat
+                </button>
+              )}
+              <button className="tts-btn stop" onClick={handleStop}>
+                <span role="img" aria-label="stop">⏹️</span> Durdur
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

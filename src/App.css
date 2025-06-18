@@ -114,6 +114,37 @@ body {
   background: #fff;
 }
 
+.tts-controls {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.tts-controls .tts-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0;
+}
+
+.tts-btn.pause {
+  background: linear-gradient(90deg, #7c3aed 0%, #8b5cf6 100%);
+}
+
+.tts-btn.stop {
+  background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%);
+}
+
+.tts-btn.pause:hover {
+  background: linear-gradient(90deg, #6d28d9 0%, #7c3aed 100%);
+}
+
+.tts-btn.stop:hover {
+  background: linear-gradient(90deg, #b91c1c 0%, #dc2626 100%);
+}
+
 @media (max-width: 600px) {
   .tts-card {
     padding: 1.2rem 0.5rem 1.5rem 0.5rem;
