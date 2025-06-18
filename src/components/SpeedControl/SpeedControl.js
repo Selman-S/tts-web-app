@@ -38,7 +38,10 @@ const SpeedControl = ({
           <span className="speed-number">{speechRate}x</span>
           <span className="speed-label">{getSpeedLabel(speechRate, t)}</span>
         </div>
+        <label htmlFor="speed-slider" className="sr-only">{t('speedControl.title')}</label>
         <input
+          id="speed-slider"
+          name="speed-slider"
           type="range"
           min={SPEECH_RATE_MIN}
           max={SPEECH_RATE_MAX}
@@ -46,6 +49,7 @@ const SpeedControl = ({
           value={speechRate}
           onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
           className="speed-slider"
+          aria-label={`${t('speedControl.title')} ${speechRate}x`}
         />
         <div className="speed-range-labels">
           <span>{SPEECH_RATE_MIN}x</span>

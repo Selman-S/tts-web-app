@@ -233,6 +233,16 @@ const HomePage = () => {
     }
   };
 
+  const handleVoiceSelect = (voice) => {
+    setSelectedVoice(voice);
+  };
+
+  const handleSpeedChange = (newRate) => {
+    if (newRate >= 0.5 && newRate <= 2.0) {
+      setSpeechRate(newRate);
+    }
+  };
+
   const handleSpeak = () => {
     if (!('speechSynthesis' in window)) {
       setError(t('textInput.browserNotSupported'));
@@ -320,6 +330,9 @@ const HomePage = () => {
           error={error}
           selectedVoice={selectedVoice}
           speechRate={speechRate}
+          voices={voices}
+          onVoiceSelect={handleVoiceSelect}
+          onSpeedChange={handleSpeedChange}
         />
 
         <ProgressBar

@@ -90,20 +90,28 @@ const History = ({
 
       <div className="history-controls">
         <div className="search-container">
+          <label htmlFor="history-search" className="sr-only">{t('history.search')}</label>
           <input
+            id="history-search"
+            name="history-search"
             type="text"
             placeholder={t('history.search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-input"
+            aria-label={t('history.search')}
           />
           <span className="search-icon">🔍</span>
         </div>
 
+        <label htmlFor="category-filter" className="sr-only">{t('history.categories')}</label>
         <select
+          id="category-filter"
+          name="category-filter"
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
           className="category-select"
+          aria-label={t('history.categories')}
         >
           <option value="all">{t('history.all')}</option>
           <option value="favorites">⭐ {t('history.favorites')}</option>
@@ -136,10 +144,13 @@ const History = ({
               <div key={item.id} className={`history-item ${selectedItems.has(item.id) ? 'selected' : ''}`}>
                 <div className="history-item-header">
                   <input
+                    id={`checkbox-${item.id}`}
+                    name={`checkbox-${item.id}`}
                     type="checkbox"
                     checked={selectedItems.has(item.id)}
                     onChange={() => onToggleItemSelection(item.id)}
                     className="item-checkbox"
+                    aria-label={`${t('history.selectItem')} ${item.preview.substring(0, 30)}...`}
                   />
                   <div className="category-badge" style={{ backgroundColor: categoryInfo.color }}>
                     {categoryInfo.icon}
@@ -161,10 +172,13 @@ const History = ({
                   </div>
                   <div className="item-actions">
                     <select
+                      id={`category-${item.id}`}
+                      name={`category-${item.id}`}
                       value={item.category}
                       onChange={(e) => onUpdateItemCategory(item.id, e.target.value)}
                       className="category-select-mini"
                       onClick={(e) => e.stopPropagation()}
+                      aria-label={`${t('history.changeCategory')} ${item.preview.substring(0, 30)}...`}
                     >
                       {CATEGORIES.map(cat => (
                         <option key={cat.id} value={cat.id}>
