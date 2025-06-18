@@ -7,6 +7,7 @@ import History from './components/History/History';
 import TextInput from './components/TextInput/TextInput';
 import CurrentReading from './components/CurrentReading/CurrentReading';
 import AudioControls from './components/AudioControls/AudioControls';
+import ProgressBar from './components/ProgressBar/ProgressBar';
 import { MAX_CHARS } from './constants';
 import './App.css';
 
@@ -33,6 +34,8 @@ function App() {
   const [wordEnd, setWordEnd] = useState(0);
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
   const [sentences, setSentences] = useState([]);
+  const [startTime, setStartTime] = useState(null);
+  const [totalWords, setTotalWords] = useState(0);
   
   // History and UI panels state
   const [history, setHistory] = useState([]);
@@ -246,6 +249,11 @@ function App() {
       return;
     }
 
+    // Calculate total words
+    const wordCount = text.trim().split(/\s+/).length;
+    setTotalWords(wordCount);
+    setStartTime(Date.now());
+
     setSentences(textSentences);
     setCurrentSentenceIndex(0);
     setIsSpeaking(true);
@@ -264,6 +272,12 @@ function App() {
       setText(progress.text);
       setSentences(progress.sentences);
       setCurrentSentenceIndex(progress.currentSentenceIndex);
+      
+      // Calculate total words and set start time for progress tracking
+      const wordCount = progress.text.trim().split(/\s+/).length;
+      setTotalWords(wordCount);
+      setStartTime(Date.now());
+      
       setIsSpeaking(true);
       setIsPaused(false);
       speakFromIndex(progress.sentences, progress.currentSentenceIndex);
@@ -280,6 +294,8 @@ function App() {
     setCurrentSentence('');
     setCurrentWord('');
     setCurrentSentenceIndex(0);
+    setStartTime(null);
+    setTotalWords(0);
     localStorage.removeItem('tts-current-progress');
   };
 
@@ -419,6 +435,17 @@ function App() {
             error={error}
             selectedVoice={selectedVoice}
             speechRate={speechRate}
+          />
+
+          <ProgressBar
+            currentSentenceIndex={currentSentenceIndex}
+            totalSentences={sentences.length}
+            isSpeaking={isSpeaking}
+            isPaused={isPaused}
+            speechRate={speechRate}
+            totalWords={totalWords}
+            startTime={startTime}
+            show={isSpeaking || isPaused}
           />
 
           <CurrentReading
