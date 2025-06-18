@@ -110,8 +110,8 @@ const ProgressBar = ({
       </div>
       
       <div className="progress-labels">
-        <span className="progress-label start">Başlangıç</span>
-        <span className="progress-label end">Bitiş</span>
+        <span className="progress-label start">Elapsed Time</span>
+        <span className="progress-label end">{formatTime(elapsedTime)} / {estimatedMinutes}:00</span>
       </div>
     </div>
   );

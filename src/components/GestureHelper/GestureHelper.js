@@ -31,7 +31,22 @@ const GestureHelper = ({
 
   // Touch start handler
   const handleTouchStart = (e) => {
+    // Only activate gestures during speech or pause, and not on interactive elements
     if (!isSpeaking && !isPaused) return;
+    
+    // Check if the touch target is an interactive element
+    const target = e.target;
+    const isInteractiveElement = target.closest('button') || 
+                                target.closest('input') || 
+                                target.closest('select') || 
+                                target.closest('textarea') ||
+                                target.closest('.history-panel') ||
+                                target.closest('.voice-selector-panel') ||
+                                target.closest('.speed-control-panel') ||
+                                target.closest('.bottom-navigation') ||
+                                target.closest('a');
+    
+    if (isInteractiveElement) return;
     
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientX);
@@ -49,6 +64,8 @@ const GestureHelper = ({
 
   // Touch move handler
   const handleTouchMove = (e) => {
+    if (!isSpeaking && !isPaused) return;
+    
     if (longPressTimer) {
       clearTimeout(longPressTimer);
       setLongPressTimer(null);
@@ -58,10 +75,26 @@ const GestureHelper = ({
 
   // Touch end handler
   const handleTouchEnd = (e) => {
+    if (!isSpeaking && !isPaused) return;
+    
     if (longPressTimer) {
       clearTimeout(longPressTimer);
       setLongPressTimer(null);
     }
+
+    // Check if the touch target is an interactive element
+    const target = e.target;
+    const isInteractiveElement = target.closest('button') || 
+                                target.closest('input') || 
+                                target.closest('select') || 
+                                target.closest('textarea') ||
+                                target.closest('.history-panel') ||
+                                target.closest('.voice-selector-panel') ||
+                                target.closest('.speed-control-panel') ||
+                                target.closest('.bottom-navigation') ||
+                                target.closest('a');
+    
+    if (isInteractiveElement) return;
 
     if (!touchStart || !touchEnd) {
       // Handle tap gestures
@@ -76,13 +109,13 @@ const GestureHelper = ({
     if (isLeftSwipe && currentSentenceIndex < totalSentences - 1) {
       // Swipe left - next sentence
       onNextSentence();
-      showGestureIndicator('⏭️', 'Sonraki cümle');
+      showGestureIndicator('⏭️', 'Next sentence');
     }
     
     if (isRightSwipe && currentSentenceIndex > 0) {
       // Swipe right - previous sentence
       onPreviousSentence();
-      showGestureIndicator('⏮️', 'Önceki cümle');
+      showGestureIndicator('⏮️', 'Previous sentence');
     }
   };
 
@@ -94,15 +127,15 @@ const GestureHelper = ({
     if (tapLength < 500 && tapLength > 0) {
       // Double tap - restart current sentence
       onRestartSentence();
-      showGestureIndicator('🔄', 'Cümle yeniden başlatıldı');
+      showGestureIndicator('🔄', 'Sentence restarted');
     } else {
       // Single tap - pause/resume
       if (isSpeaking && !isPaused) {
         onPause();
-        showGestureIndicator('⏸️', 'Duraklatıldı');
+        showGestureIndicator('⏸️', 'Paused');
       } else if (isPaused) {
         onResume();
-        showGestureIndicator('▶️', 'Devam ediyor');
+        showGestureIndicator('▶️', 'Resumed');
       }
     }
 
@@ -135,7 +168,7 @@ const GestureHelper = ({
       setTimeout(() => {
         setShowGestureHint({ 
           icon: '👆', 
-          message: 'Dokunma hareketleri aktif!' 
+          message: 'Touch gestures active!' 
         });
         localStorage.setItem('gesture-hint-shown', 'true');
       }, 2000);

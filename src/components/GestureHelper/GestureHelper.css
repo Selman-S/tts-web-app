@@ -2,13 +2,12 @@
 .gesture-container {
   position: relative;
   width: 100%;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
 }
 
 .gesture-container.gesture-active {
-  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Gesture Hint */

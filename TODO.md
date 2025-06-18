@@ -29,11 +29,11 @@
   - [x] Add visual progress for long texts
 
 ### 📱 Mobile Experience
-- [ ] **Touch Gestures** ⭐⭐
-  - [ ] Swipe left/right for previous/next sentence
-  - [ ] Tap to pause/resume
-  - [ ] Double-tap to restart current sentence
-  - [ ] Long press for options menu
+- [x] **Touch Gestures** ⭐⭐ ☑️
+  - [x] Swipe left/right for previous/next sentence
+  - [x] Tap to pause/resume
+  - [x] Double-tap to restart current sentence
+  - [x] Long press for options menu
 
 ## 🎯 Short-term Goals (Next Month)
 
