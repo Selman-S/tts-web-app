@@ -319,6 +319,15 @@ export const SpeechProvider = ({ children }) => {
     utteranceRef.current = null;
   };
 
+  // Dismiss paused reading session without resuming
+  const dismissPausedReading = () => {
+    // Clear all speech state
+    handleStop();
+    // Also clear the text
+    setCurrentText('');
+    setSentences([]);
+  };
+
     // Sentence navigation functions
   const goToNextSentence = () => {
     if (currentSentenceIndex < sentences.length - 1) {
@@ -401,7 +410,8 @@ export const SpeechProvider = ({ children }) => {
     handleSpeedChange,
     setCurrentText,
     goToNextSentence,
-    goToPreviousSentence
+    goToPreviousSentence,
+    dismissPausedReading
   };
 
   return (

@@ -35,6 +35,16 @@ export const translations = {
       stopAriaLabel: 'Seslendirmeyi durdur'
     },
     
+    // Resume Reading
+    resumeReading: {
+      title: 'Kaldığınız Yerden Devam Edin',
+      description: 'Önceki okuma seansınızı kaldığınız yerden devam ettirin',
+      resumeButton: 'Kaldığım Yerden Devam Et',
+      dismissButton: 'Kapat',
+      sentenceInfo: 'Cümle {current} / {total}',
+      textPreview: 'Metin önizlemesi'
+    },
+    
     // Progress Bar
     progressBar: {
       sentences: 'cümle',
@@ -173,6 +183,16 @@ export const translations = {
       pauseAriaLabel: 'Pause speech',
       resumeAriaLabel: 'Resume speech',
       stopAriaLabel: 'Stop speech'
+    },
+    
+    // Resume Reading
+    resumeReading: {
+      title: 'Resume Where You Left Off',
+      description: 'Continue your previous reading session from where you left off',
+      resumeButton: 'Resume Reading',
+      dismissButton: 'Dismiss',
+      sentenceInfo: 'Sentence {current} / {total}',
+      textPreview: 'Text preview'
     },
     
     // Progress Bar
