@@ -39,11 +39,10 @@
   color: #0c5460;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
-.reading-label::before {
-  content: '📖';
+.reading-icon {
   font-size: 14px;
 }
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation } from '../../translations';
 import { getVoiceDisplayName } from '../../utils/textUtils';
+import { FaTimes, FaCheck } from 'react-icons/fa';
 import './VoiceSelector.css';
 
 /**
@@ -24,7 +25,7 @@ const VoiceSelector = ({
       <div className="voice-selector-header">
         <h3>{t('voiceSelector.title')}</h3>
         <button onClick={onClose} className="close-btn">
-          ✕
+          <FaTimes />
         </button>
       </div>
       <div className="voice-options">
@@ -36,7 +37,7 @@ const VoiceSelector = ({
             <span className="voice-name">{t('voiceSelector.defaultVoice')}</span>
             <span className="voice-desc">{t('voiceSelector.systemDefault')}</span>
           </div>
-          {!selectedVoice && <span className="check-mark">✓</span>}
+          {!selectedVoice && <FaCheck className="check-mark" />}
         </div>
         {voices.map(voice => (
           <div 
@@ -48,7 +49,7 @@ const VoiceSelector = ({
               <span className="voice-name">{getVoiceDisplayName(voice, t)}</span>
               <span className="voice-desc">{voice.name}</span>
             </div>
-            {selectedVoice?.name === voice.name && <span className="check-mark">✓</span>}
+            {selectedVoice?.name === voice.name && <FaCheck className="check-mark" />}
           </div>
         ))}
       </div>

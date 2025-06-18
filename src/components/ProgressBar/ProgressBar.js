@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation } from '../../translations';
+import { FaBookOpen, FaClock, FaChartBar, FaBullseye } from 'react-icons/fa';
 import './ProgressBar.css';
 
 /**
@@ -74,19 +75,19 @@ const ProgressBar = ({
       <div className="progress-header">
         <div className="progress-stats">
           <span className="stat-item">
-            <span className="stat-icon">📖</span>
+            <FaBookOpen className="stat-icon" />
             <span className="stat-text">{currentSentenceIndex} {t('progressBar.of')} {totalSentences}</span>
           </span>
           <span className="stat-item">
-            <span className="stat-icon">⏱️</span>
+            <FaClock className="stat-icon" />
             <span className="stat-text">{formatTime(elapsedTime)}</span>
           </span>
           <span className="stat-item">
-            <span className="stat-icon">📊</span>
+            <FaChartBar className="stat-icon" />
             <span className="stat-text">{wordsPerMinute} {t('progressBar.wordsPerMinute')}</span>
           </span>
           <span className="stat-item">
-            <span className="stat-icon">🎯</span>
+            <FaBullseye className="stat-icon" />
             <span className="stat-text">~{estimatedMinutes}{t('progressBar.estimatedTime')}</span>
           </span>
         </div>

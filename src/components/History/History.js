@@ -2,6 +2,7 @@ import React from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation } from '../../translations';
 import { CATEGORIES } from '../../constants';
+import { FaSearch, FaStar, FaRegStar, FaTrash, FaPlay } from 'react-icons/fa';
 import './History.css';
 
 /**
@@ -76,10 +77,10 @@ const History = ({
         ) : (
           <div className="bulk-actions">
             <button onClick={onBulkDelete} className="bulk-btn danger">
-              {t('history.delete')} ({selectedItems.size})
+              <FaTrash /> {t('history.delete')} ({selectedItems.size})
             </button>
             <button onClick={onBulkToggleFavorite} className="bulk-btn">
-              ⭐
+              <FaStar />
             </button>
             <button onClick={onDeselectAllItems} className="bulk-btn secondary">
               {t('history.cancel')}
@@ -101,7 +102,7 @@ const History = ({
             className="search-input"
             aria-label={t('history.search')}
           />
-          <span className="search-icon">🔍</span>
+          <FaSearch className="search-icon" />
         </div>
 
         <label htmlFor="category-filter" className="sr-only">{t('history.categories')}</label>
@@ -114,7 +115,7 @@ const History = ({
           aria-label={t('history.categories')}
         >
           <option value="all">{t('history.all')}</option>
-          <option value="favorites">⭐ {t('history.favorites')}</option>
+          <option value="favorites">★ {t('history.favorites')}</option>
           {CATEGORIES.map(cat => (
             <option key={cat.id} value={cat.id}>
               {cat.icon} {t(`categories.${cat.id}`)}
@@ -159,7 +160,7 @@ const History = ({
                     onClick={() => onToggleFavorite(item.id)}
                     className={`favorite-btn ${item.isFavorite ? 'active' : ''}`}
                   >
-                    {item.isFavorite ? '⭐' : '☆'}
+                    {item.isFavorite ? <FaStar /> : <FaRegStar />}
                   </button>
                 </div>
                 
@@ -190,7 +191,7 @@ const History = ({
                       onClick={() => onLoadFromHistory(item)}
                       className="load-btn"
                     >
-                      {t('history.load')}
+                      <FaPlay /> {t('history.load')}
                     </button>
                   </div>
                 </div>

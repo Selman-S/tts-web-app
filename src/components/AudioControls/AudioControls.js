@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation } from '../../translations';
+import { FaPlay, FaPause, FaStop } from 'react-icons/fa';
 import './AudioControls.css';
 
 /**
@@ -26,7 +27,7 @@ const AudioControls = ({
             aria-label={t('audioControls.speakAriaLabel')}
             type="button"
           >
-            <span className="btn-icon" aria-hidden="true">▶️</span> 
+            <FaPlay className="btn-icon" aria-hidden="true" />
             <span className="btn-text">{t('audioControls.speak')}</span>
           </button>
         ) : (
@@ -38,7 +39,7 @@ const AudioControls = ({
                 aria-label={t('audioControls.resumeAriaLabel')}
                 type="button"
               >
-                <span className="btn-icon" aria-hidden="true">▶️</span> 
+                <FaPlay className="btn-icon" aria-hidden="true" />
                 <span className="btn-text">{t('audioControls.resume')}</span>
               </button>
             ) : (
@@ -48,7 +49,7 @@ const AudioControls = ({
                 aria-label={t('audioControls.pauseAriaLabel')}
                 type="button"
               >
-                <span className="btn-icon" aria-hidden="true">⏸️</span> 
+                <FaPause className="btn-icon" aria-hidden="true" />
                 <span className="btn-text">{t('audioControls.pause')}</span>
               </button>
             )}
@@ -58,7 +59,7 @@ const AudioControls = ({
               aria-label={t('audioControls.stopAriaLabel')}
               type="button"
             >
-              <span className="btn-icon" aria-hidden="true">⏹️</span> 
+              <FaStop className="btn-icon" aria-hidden="true" />
               <span className="btn-text">{t('audioControls.stop')}</span>
             </button>
           </div>

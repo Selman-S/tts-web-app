@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation } from '../../translations';
+import { FaHome, FaHistory, FaCog } from 'react-icons/fa';
 import './BottomNavigation.css';
 
 /**
@@ -23,7 +24,7 @@ const BottomNavigation = () => {
         onClick={() => navigate('/')}
         title={t('nav.home')}
       >
-        <span className="nav-icon">🏠</span>
+        <FaHome className="nav-icon" />
         <span className="nav-label">{t('nav.home')}</span>
       </button>
 
@@ -32,7 +33,7 @@ const BottomNavigation = () => {
         onClick={() => navigate('/history')}
         title={t('nav.history')}
       >
-        <span className="nav-icon">📚</span>
+        <FaHistory className="nav-icon" />
         <span className="nav-label">{t('nav.history')}</span>
       </button>
 
@@ -41,7 +42,7 @@ const BottomNavigation = () => {
         onClick={() => navigate('/settings')}
         title={t('nav.settings')}
       >
-        <span className="nav-icon">⚙️</span>
+        <FaCog className="nav-icon" />
         <span className="nav-label">{t('nav.settings')}</span>
       </button>
     </nav>

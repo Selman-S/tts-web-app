@@ -3,6 +3,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation } from '../../translations';
 import { MAX_CHARS } from '../../constants';
 import { getVoiceDisplayName } from '../../utils/textUtils';
+import { FaTimes } from 'react-icons/fa';
 import './TextInput.css';
 
 /**
@@ -48,7 +49,7 @@ const TextInput = ({
               aria-label={t('textInput.clearText')}
               title={t('textInput.clearText')}
             >
-              ✕
+              <FaTimes />
             </button>
           )}
         </div>

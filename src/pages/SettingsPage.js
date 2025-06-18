@@ -6,6 +6,7 @@ import { useTranslation } from '../translations';
 import VoiceSelector from '../components/VoiceSelector/VoiceSelector';
 import SpeedControl from '../components/SpeedControl/SpeedControl';
 import { getVoiceDisplayName, getSpeedLabel } from '../utils/textUtils';
+import { FaArrowLeft, FaSun, FaMoon, FaTrash, FaChevronRight } from 'react-icons/fa';
 
 /**
  * Settings Page component for app configuration
@@ -135,7 +136,7 @@ const SettingsPage = () => {
               color: 'var(--text-secondary)'
             }}
           >
-            ←
+            <FaArrowLeft />
           </button>
           <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: 'var(--text-primary)' }}>
             {t('settings.title')}
@@ -213,7 +214,7 @@ const SettingsPage = () => {
                   {getVoiceDisplayName(selectedVoice, t)}
                 </div>
               </div>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '18px' }}>›</span>
+              <FaChevronRight style={{ color: 'var(--text-secondary)', fontSize: '16px' }} />
             </div>
           </div>
 
@@ -244,7 +245,7 @@ const SettingsPage = () => {
                   {speechRate}x - {getSpeedLabel(speechRate, t)}
                 </div>
               </div>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '18px' }}>›</span>
+              <FaChevronRight style={{ color: 'var(--text-secondary)', fontSize: '16px' }} />
             </div>
           </div>
 
@@ -275,8 +276,8 @@ const SettingsPage = () => {
                   {isDarkMode ? t('settings.dark') : t('settings.light')}
                 </div>
               </div>
-              <span style={{ fontSize: '20px' }}>
-                {isDarkMode ? '🌙' : '☀️'}
+              <span style={{ fontSize: '20px', color: 'var(--text-primary)' }}>
+                {isDarkMode ? <FaMoon /> : <FaSun />}
               </span>
             </div>
           </div>
@@ -308,7 +309,7 @@ const SettingsPage = () => {
                   {t('settings.confirmClearData')}
                 </div>
               </div>
-              <span style={{ color: 'var(--danger)', fontSize: '18px' }}>🗑️</span>
+              <FaTrash style={{ color: 'var(--danger)', fontSize: '18px' }} />
             </div>
           </div>
 

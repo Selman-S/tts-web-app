@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation } from '../../translations';
+import { FaBookOpen } from 'react-icons/fa';
 import './CurrentReading.css';
 
 /**
@@ -23,7 +24,10 @@ const CurrentReading = ({
   return (
     <div className="current-reading">
       <div className="reading-header">
-        <span className="reading-label">{t('currentReading.reading')}:</span>
+        <span className="reading-label">
+          <FaBookOpen className="reading-icon" />
+          {t('currentReading.reading')}:
+        </span>
         <span className="sentence-progress">
           {currentSentenceIndex + 1} {t('progressBar.of')} {totalSentences}
         </span>

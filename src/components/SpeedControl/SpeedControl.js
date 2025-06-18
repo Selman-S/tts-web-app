@@ -3,6 +3,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useTranslation } from '../../translations';
 import { SPEED_PRESETS, SPEECH_RATE_MIN, SPEECH_RATE_MAX, SPEECH_RATE_STEP } from '../../constants';
 import { getSpeedLabel } from '../../utils/textUtils';
+import { FaTimes } from 'react-icons/fa';
 import './SpeedControl.css';
 
 /**
@@ -29,7 +30,7 @@ const SpeedControl = ({
           onClick={onClose}
           className="close-btn"
         >
-          ✕
+          <FaTimes />
         </button>
       </div>
       
