@@ -1,0 +1,48 @@
+/* CSS Variables for Theme Support */
+:root {
+  /* Light Theme Colors */
+  --bg-gradient-start: #667eea;
+  --bg-gradient-end: #764ba2;
+  --card-bg: rgba(255, 255, 255, 0.95);
+  --card-border: rgba(255, 255, 255, 0.2);
+  --text-primary: #333;
+  --text-secondary: #666;
+  --text-muted: #aaa;
+  --bg-light: #f8f9fa;
+  --bg-secondary: #e9ecef;
+  --border-light: #dee2e6;
+  --white: #ffffff;
+  --success: #28a745;
+  --warning: #ffc107;
+  --danger: #dc3545;
+  --primary: #007bff;
+  --purple: #6f42c1;
+  --orange: #ff6b35;
+  --input-bg: #ffffff;
+  --shadow-light: rgba(0, 0, 0, 0.1);
+  --shadow-medium: rgba(0, 0, 0, 0.15);
+}
+
+/* Dark Theme Colors */
+[data-theme="dark"] {
+  --bg-gradient-start: #2c3e50;
+  --bg-gradient-end: #34495e;
+  --card-bg: rgba(44, 62, 80, 0.95);
+  --card-border: rgba(255, 255, 255, 0.1);
+  --text-primary: #ecf0f1;
+  --text-secondary: #bdc3c7;
+  --text-muted: #7f8c8d;
+  --bg-light: #34495e;
+  --bg-secondary: #2c3e50;
+  --border-light: #4a5568;
+  --white: #2d3748;
+  --success: #48bb78;
+  --warning: #ed8936;
+  --danger: #f56565;
+  --primary: #4299e1;
+  --purple: #805ad5;
+  --orange: #ff8c42;
+  --input-bg: #2d3748;
+  --shadow-light: rgba(0, 0, 0, 0.3);
+  --shadow-medium: rgba(0, 0, 0, 0.4);
+} 

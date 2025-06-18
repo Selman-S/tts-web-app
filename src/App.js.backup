@@ -1,0 +1,834 @@
+import React, { useState, useRef, useEffect, createContext, useContext } from 'react';
+import './App.css';
+
+// Theme Context
+const ThemeContext = createContext();
+
+const ThemeProvider = ({ children }) => {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Load theme preference on mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('tts-theme');
+    if (savedTheme) {
+      setIsDarkMode(savedTheme === 'dark');
+    } else {
+      // Check system preference
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setIsDarkMode(systemPrefersDark);
+    }
+  }, []);
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+    localStorage.setItem('tts-theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
+
+  const toggleTheme = () => {
+    setIsDarkMode(prev => !prev);
+  };
+
+  return (
+    <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};
+
+const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  return context;
+};
+
+function App() {
+  const [text, setText] = useState('');
+  const [error, setError] = useState('');
+  const [voices, setVoices] = useState([]);
+  const [selectedVoice, setSelectedVoice] = useState(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [currentSentence, setCurrentSentence] = useState('');
+  const [currentWord, setCurrentWord] = useState('');
+  const [wordStart, setWordStart] = useState(0);
+  const [wordEnd, setWordEnd] = useState(0);
+  const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
+  const [sentences, setSentences] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showVoiceSelector, setShowVoiceSelector] = useState(false);
+  const [showSpeedControl, setShowSpeedControl] = useState(false);
+  const [speechRate, setSpeechRate] = useState(1.0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedItems, setSelectedItems] = useState(new Set());
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const maxChars = 50000;
+  const maxHistory = 10;
+
+  // Get theme context
+  const { isDarkMode, toggleTheme } = useTheme();
+
+  // Predefined categories for text organization
+  const categories = [
+    { id: 'personal', name: 'Kişisel', icon: '👤', color: '#007bff' },
+    { id: 'work', name: 'İş', icon: '💼', color: '#28a745' },
+    { id: 'education', name: 'Eğitim', icon: '📚', color: '#6f42c1' },
+    { id: 'news', name: 'Haberler', icon: '📰', color: '#dc3545' },
+    { id: 'entertainment', name: 'Eğlence', icon: '🎬', color: '#fd7e14' },
+    { id: 'other', name: 'Diğer', icon: '📄', color: '#6c757d' }
+  ];
+
+  // Load voices, history and settings from localStorage
+  useEffect(() => {
+    const loadVoices = () => {
+      const availableVoices = window.speechSynthesis.getVoices();
+      setVoices(availableVoices.filter(voice => voice.lang.startsWith('tr')));
+    };
+
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+
+    // Load history from localStorage
+    const savedHistory = localStorage.getItem('tts-history');
+    if (savedHistory) {
+      try {
+        setHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error('Error loading history:', e);
+      }
+    }
+
+    // Load speech rate from localStorage
+    const savedRate = localStorage.getItem('tts-speech-rate');
+    if (savedRate) {
+      try {
+        const rate = parseFloat(savedRate);
+        if (rate >= 0.5 && rate <= 2.0) {
+          setSpeechRate(rate);
+        }
+      } catch (e) {
+        console.error('Error loading speech rate:', e);
+      }
+    }
+  }, []);
+
+  // Save history to localStorage whenever it changes
+  useEffect(() => {
+    if (history.length > 0) {
+      localStorage.setItem('tts-history', JSON.stringify(history));
+    }
+  }, [history]);
+
+  // Save speech rate to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('tts-speech-rate', speechRate.toString());
+  }, [speechRate]);
+
+  // Save current reading progress
+  const saveProgress = (textContent, sentenceIndex, sentences) => {
+    const progressData = {
+      text: textContent,
+      currentSentenceIndex: sentenceIndex,
+      sentences: sentences,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('tts-current-progress', JSON.stringify(progressData));
+  };
+
+  // Load reading progress
+  const loadProgress = () => {
+    const saved = localStorage.getItem('tts-current-progress');
+    if (saved) {
+      try {
+        const progressData = JSON.parse(saved);
+        setText(progressData.text);
+        setCurrentSentenceIndex(progressData.currentSentenceIndex);
+        setSentences(progressData.sentences);
+        return progressData;
+      } catch (e) {
+        console.error('Error loading progress:', e);
+      }
+    }
+    return null;
+  };
+
+  // Split text into sentences - fixed to avoid duplication
+  const splitIntoSentences = (text) => {
+    if (!text || typeof text !== 'string') return [];
+    
+    // Clean and normalize text
+    const cleanText = text.trim();
+    if (!cleanText) return [];
+    
+    // Split by sentence endings, keeping the punctuation
+    const sentencePattern = /[.!?]+\s*/g;
+    let sentences = cleanText.split(sentencePattern).filter(s => s.trim());
+    
+    // If no sentence endings found, split by paragraphs or use entire text
+    if (sentences.length <= 1) {
+      sentences = cleanText.split(/\n+/).filter(s => s.trim());
+    }
+    
+    // If still only one sentence, use the entire text
+    if (sentences.length === 0) {
+      sentences = [cleanText];
+    }
+    
+    return sentences.map(s => s.trim()).filter(s => s.length > 0);
+  };
+
+  // Add text to history with category and favorite status
+  const addToHistory = (textContent, category = 'other') => {
+    const historyItem = {
+      id: Date.now(),
+      text: textContent,
+      timestamp: new Date().toLocaleString('tr-TR'),
+      preview: textContent.substring(0, 100) + (textContent.length > 100 ? '...' : ''),
+      category: category,
+      isFavorite: false,
+      wordCount: textContent.trim().split(/\s+/).length
+    };
+    
+    setHistory(prev => {
+      const newHistory = [historyItem, ...prev.filter(item => item.text !== textContent)];
+      return newHistory.slice(0, maxHistory);
+    });
+  };
+
+  // Filter history based on search and category
+  const getFilteredHistory = () => {
+    let filtered = history;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(item => 
+        item.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.preview.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Filter by category
+    if (selectedCategory !== 'all') {
+      if (selectedCategory === 'favorites') {
+        filtered = filtered.filter(item => item.isFavorite);
+      } else {
+        filtered = filtered.filter(item => item.category === selectedCategory);
+      }
+    }
+
+    return filtered;
+  };
+
+  // Toggle favorite status
+  const toggleFavorite = (itemId) => {
+    setHistory(prev => prev.map(item => 
+      item.id === itemId ? { ...item, isFavorite: !item.isFavorite } : item
+    ));
+  };
+
+  // Update item category
+  const updateItemCategory = (itemId, newCategory) => {
+    setHistory(prev => prev.map(item => 
+      item.id === itemId ? { ...item, category: newCategory } : item
+    ));
+  };
+
+  // Bulk operations
+  const toggleItemSelection = (itemId) => {
+    const newSelected = new Set(selectedItems);
+    if (newSelected.has(itemId)) {
+      newSelected.delete(itemId);
+    } else {
+      newSelected.add(itemId);
+    }
+    setSelectedItems(newSelected);
+    setShowBulkActions(newSelected.size > 0);
+  };
+
+  const selectAllItems = () => {
+    const filteredItems = getFilteredHistory();
+    const allIds = new Set(filteredItems.map(item => item.id));
+    setSelectedItems(allIds);
+    setShowBulkActions(allIds.size > 0);
+  };
+
+  const deselectAllItems = () => {
+    setSelectedItems(new Set());
+    setShowBulkActions(false);
+  };
+
+  const bulkDelete = () => {
+    setHistory(prev => prev.filter(item => !selectedItems.has(item.id)));
+    setSelectedItems(new Set());
+    setShowBulkActions(false);
+  };
+
+  const bulkToggleFavorite = () => {
+    setHistory(prev => prev.map(item => 
+      selectedItems.has(item.id) ? { ...item, isFavorite: !item.isFavorite } : item
+    ));
+    setSelectedItems(new Set());
+    setShowBulkActions(false);
+  };
+
+  const bulkUpdateCategory = (newCategory) => {
+    setHistory(prev => prev.map(item => 
+      selectedItems.has(item.id) ? { ...item, category: newCategory } : item
+    ));
+    setSelectedItems(new Set());
+    setShowBulkActions(false);
+  };
+
+  const handleSpeak = () => {
+    if (!('speechSynthesis' in window)) {
+      setError('Tarayıcınız bu özelliği desteklemiyor.');
+      return;
+    }
+    if (!text || text.trim() === '') {
+      setError('Lütfen bir metin girin.');
+      return;
+    }
+    setError('');
+
+    // Add to history with default category
+    addToHistory(text);
+
+    // Split text into sentences
+    const textSentences = splitIntoSentences(text);
+    if (textSentences.length === 0) {
+      setError('Lütfen geçerli bir metin girin.');
+      return;
+    }
+
+    setSentences(textSentences);
+    setCurrentSentenceIndex(0);
+    setIsSpeaking(true);
+    setIsPaused(false);
+    
+    speakFromIndex(textSentences, 0);
+  };
+
+  const handleResume = () => {
+    const progress = loadProgress();
+    if (progress && progress.sentences && progress.currentSentenceIndex < progress.sentences.length) {
+      setText(progress.text);
+      setSentences(progress.sentences);
+      setCurrentSentenceIndex(progress.currentSentenceIndex);
+      setIsSpeaking(true);
+      setIsPaused(false);
+      speakFromIndex(progress.sentences, progress.currentSentenceIndex);
+    } else {
+      window.speechSynthesis.resume();
+      setIsPaused(false);
+    }
+  };
+
+  const speakFromIndex = (sentenceArray, startIndex) => {
+    if (startIndex >= sentenceArray.length) {
+      handleStop();
+      return;
+    }
+
+    const sentence = sentenceArray[startIndex];
+    if (!sentence || !sentence.trim()) {
+      // Skip empty sentence and continue with next
+      if (startIndex < sentenceArray.length - 1) {
+        setCurrentSentenceIndex(startIndex + 1);
+        speakFromIndex(sentenceArray, startIndex + 1);
+      } else {
+        handleStop();
+      }
+      return;
+    }
+
+    const trimmedSentence = sentence.trim();
+    setCurrentSentence(trimmedSentence);
+    setCurrentWord('');
+    setWordStart(0);
+    setWordEnd(0);
+    setCurrentSentenceIndex(startIndex);
+
+    // Save progress
+    saveProgress(text, startIndex, sentenceArray);
+
+    const utterance = new window.SpeechSynthesisUtterance(trimmedSentence);
+    utterance.lang = 'tr-TR';
+    utterance.rate = speechRate; // Use the current speech rate
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    }
+
+    // Track word boundaries for highlighting
+    utterance.onboundary = (event) => {
+      if (event.name === 'word' && event.charIndex !== undefined && event.charLength !== undefined) {
+        const word = trimmedSentence.substring(event.charIndex, event.charIndex + event.charLength);
+        if (word && word.trim()) {
+          setCurrentWord(word);
+          setWordStart(event.charIndex);
+          setWordEnd(event.charIndex + event.charLength);
+        }
+      }
+    };
+
+    utterance.onend = () => {
+      if (startIndex < sentenceArray.length - 1) {
+        setCurrentSentenceIndex(startIndex + 1);
+        speakFromIndex(sentenceArray, startIndex + 1);
+      } else {
+        handleStop();
+      }
+    };
+
+    utterance.onerror = (event) => {
+      console.error('Speech synthesis error:', event);
+      handleStop();
+    };
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handlePause = () => {
+    window.speechSynthesis.pause();
+    setIsPaused(true);
+  };
+
+  const handleStop = () => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+    setIsPaused(false);
+    setCurrentSentence('');
+    setCurrentWord('');
+    setCurrentSentenceIndex(0);
+    // Clear progress when stopped
+    localStorage.removeItem('tts-current-progress');
+  };
+
+  const handleChange = (e) => {
+    if (e.target.value.length <= maxChars) {
+      setText(e.target.value);
+      setError('');
+    }
+  };
+
+  const loadFromHistory = (historyItem) => {
+    setText(historyItem.text);
+    setShowHistory(false);
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
+    setSelectedItems(new Set());
+    setShowBulkActions(false);
+    localStorage.removeItem('tts-history');
+  };
+
+  const hasProgress = () => {
+    const saved = localStorage.getItem('tts-current-progress');
+    return saved ? true : false;
+  };
+
+  const selectVoice = (voice) => {
+    setSelectedVoice(voice);
+    setShowVoiceSelector(false);
+  };
+
+  const getVoiceDisplayName = (voice) => {
+    if (!voice) return 'Varsayılan Ses';
+    return voice.name.split(' ')[0] || voice.name;
+  };
+
+  // Speed control functions
+  const handleSpeedChange = (newRate) => {
+    if (newRate >= 0.5 && newRate <= 2.0) {
+      setSpeechRate(newRate);
+    }
+  };
+
+  const setPresetSpeed = (rate) => {
+    setSpeechRate(rate);
+    setShowSpeedControl(false);
+  };
+
+  const getSpeedLabel = (rate) => {
+    if (rate <= 0.75) return 'Yavaş';
+    if (rate <= 1.0) return 'Normal';
+    if (rate <= 1.25) return 'Hızlı';
+    return 'Çok Hızlı';
+  };
+
+  const getCategoryInfo = (categoryId) => {
+    return categories.find(cat => cat.id === categoryId) || categories.find(cat => cat.id === 'other');
+  };
+
+  return (
+    <div className="App">
+      <div className="container">
+        <div className="tts-card">
+          <div className="tts-header">
+            <div className="tts-title">
+              <span role="img" aria-label="speaker">🗣️</span>
+              Yazıyı Sese Çevir
+            </div>
+            <div className="header-controls">
+              <button 
+                className="theme-toggle-btn"
+                onClick={toggleTheme}
+                title={`${isDarkMode ? 'Açık' : 'Koyu'} moda geç`}
+              >
+                {isDarkMode ? '☀️' : '🌙'}
+              </button>
+              <button 
+                className="speed-control-btn"
+                onClick={() => setShowSpeedControl(!showSpeedControl)}
+                title={`Hız: ${speechRate}x (${getSpeedLabel(speechRate)})`}
+              >
+                ⚡
+              </button>
+              <button 
+                className="voice-selector-btn"
+                onClick={() => setShowVoiceSelector(!showVoiceSelector)}
+                title={`Ses: ${getVoiceDisplayName(selectedVoice)}`}
+              >
+                🎤
+              </button>
+              <button 
+                className="history-btn"
+                onClick={() => setShowHistory(!showHistory)}
+                title="Geçmiş"
+              >
+                📝
+              </button>
+              {hasProgress() && !isSpeaking && (
+                <button 
+                  className="resume-btn"
+                  onClick={handleResume}
+                  title="Kaldığınız yerden devam edin"
+                >
+                  🔄
+                </button>
+              )}
+            </div>
+          </div>
+
+          {showSpeedControl && (
+            <div className="speed-control-panel">
+              <div className="speed-control-header">
+                <h3>Okuma Hızı</h3>
+                <button 
+                  onClick={() => setShowSpeedControl(false)}
+                  className="close-btn"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="speed-slider-container">
+                <div className="speed-value">
+                  <span className="speed-number">{speechRate}x</span>
+                  <span className="speed-label">{getSpeedLabel(speechRate)}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.0"
+                  step="0.1"
+                  value={speechRate}
+                  onChange={(e) => handleSpeedChange(parseFloat(e.target.value))}
+                  className="speed-slider"
+                />
+                <div className="speed-range-labels">
+                  <span>0.5x</span>
+                  <span>1.0x</span>
+                  <span>2.0x</span>
+                </div>
+              </div>
+
+              <div className="speed-presets">
+                <button 
+                  className={`preset-btn ${speechRate === 0.75 ? 'active' : ''}`}
+                  onClick={() => setPresetSpeed(0.75)}
+                >
+                  0.75x<br/><small>Yavaş</small>
+                </button>
+                <button 
+                  className={`preset-btn ${speechRate === 1.0 ? 'active' : ''}`}
+                  onClick={() => setPresetSpeed(1.0)}
+                >
+                  1.0x<br/><small>Normal</small>
+                </button>
+                <button 
+                  className={`preset-btn ${speechRate === 1.25 ? 'active' : ''}`}
+                  onClick={() => setPresetSpeed(1.25)}
+                >
+                  1.25x<br/><small>Hızlı</small>
+                </button>
+                <button 
+                  className={`preset-btn ${speechRate === 1.5 ? 'active' : ''}`}
+                  onClick={() => setPresetSpeed(1.5)}
+                >
+                  1.5x<br/><small>Çok Hızlı</small>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {showVoiceSelector && (
+            <div className="voice-selector-panel">
+              <div className="voice-selector-header">
+                <h3>Ses Seçimi</h3>
+                <button 
+                  onClick={() => setShowVoiceSelector(false)}
+                  className="close-btn"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="voice-options">
+                <div 
+                  className={`voice-option ${!selectedVoice ? 'selected' : ''}`}
+                  onClick={() => selectVoice(null)}
+                >
+                  <div className="voice-info">
+                    <span className="voice-name">Varsayılan Ses</span>
+                    <span className="voice-desc">Sistem varsayılan sesi</span>
+                  </div>
+                  {!selectedVoice && <span className="check-mark">✓</span>}
+                </div>
+                {voices.map(voice => (
+                  <div 
+                    key={voice.name}
+                    className={`voice-option ${selectedVoice?.name === voice.name ? 'selected' : ''}`}
+                    onClick={() => selectVoice(voice)}
+                  >
+                    <div className="voice-info">
+                      <span className="voice-name">{getVoiceDisplayName(voice)}</span>
+                      <span className="voice-desc">{voice.name}</span>
+                    </div>
+                    {selectedVoice?.name === voice.name && <span className="check-mark">✓</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {showHistory && (
+            <div className="history-panel">
+              <div className="history-header">
+                <h3>Geçmiş Okumalar</h3>
+                {!showBulkActions ? (
+                  <button onClick={clearHistory} className="clear-history-btn">
+                    Temizle
+                  </button>
+                ) : (
+                  <div className="bulk-actions">
+                    <button onClick={bulkDelete} className="bulk-btn danger">
+                      Sil ({selectedItems.size})
+                    </button>
+                    <button onClick={bulkToggleFavorite} className="bulk-btn">
+                      ⭐ Favoriler
+                    </button>
+                    <button onClick={deselectAllItems} className="bulk-btn secondary">
+                      İptal
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="history-controls">
+                <div className="search-container">
+                  <input
+                    type="text"
+                    placeholder="Metinlerde ara..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="search-input"
+                  />
+                  <span className="search-icon">🔍</span>
+                </div>
+
+                <div className="category-filter">
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="category-select"
+                  >
+                    <option value="all">Tümü</option>
+                    <option value="favorites">⭐ Favoriler</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.icon} {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {getFilteredHistory().length > 0 && (
+                  <div className="selection-controls">
+                    <button onClick={selectAllItems} className="select-btn">
+                      Tümünü Seç
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="history-list">
+                {getFilteredHistory().length === 0 ? (
+                  <p className="no-history">
+                    {searchQuery || selectedCategory !== 'all' 
+                      ? 'Arama kriterlerinize uygun sonuç bulunamadı' 
+                      : 'Henüz geçmiş bulunmuyor'
+                    }
+                  </p>
+                ) : (
+                  getFilteredHistory().map(item => {
+                    const categoryInfo = getCategoryInfo(item.category);
+                    return (
+                      <div key={item.id} className={`history-item ${selectedItems.has(item.id) ? 'selected' : ''}`}>
+                        <div className="history-item-header">
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.has(item.id)}
+                            onChange={() => toggleItemSelection(item.id)}
+                            className="item-checkbox"
+                          />
+                          <div className="category-badge" style={{ backgroundColor: categoryInfo.color }}>
+                            {categoryInfo.icon}
+                          </div>
+                          <button
+                            onClick={() => toggleFavorite(item.id)}
+                            className={`favorite-btn ${item.isFavorite ? 'active' : ''}`}
+                          >
+                            {item.isFavorite ? '⭐' : '☆'}
+                          </button>
+                        </div>
+                        
+                        <div className="history-preview">{item.preview}</div>
+                        
+                        <div className="history-meta">
+                          <div className="meta-info">
+                            <span className="history-date">{item.timestamp}</span>
+                            <span className="word-count">{item.wordCount} kelime</span>
+                          </div>
+                          <div className="item-actions">
+                            <select
+                              value={item.category}
+                              onChange={(e) => updateItemCategory(item.id, e.target.value)}
+                              className="category-mini-select"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {categories.map(cat => (
+                                <option key={cat.id} value={cat.id}>
+                                  {cat.icon} {cat.name}
+                                </option>
+                              ))}
+                            </select>
+                            <button 
+                              onClick={() => loadFromHistory(item)}
+                              className="load-btn"
+                            >
+                              Yükle
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          {error && <div className="tts-error">{error}</div>}
+          
+          <div className="input-section">
+            <textarea
+              className="tts-textarea"
+              rows="5"
+              placeholder="Metni buraya girin..."
+              value={text}
+              onChange={handleChange}
+              maxLength={maxChars}
+            />
+            <div className="textarea-footer">
+              <div className="tts-counter">
+                {text.length} / {maxChars}
+              </div>
+              <div className="current-settings">
+                <div className="selected-voice-info">
+                  <span className="voice-label">Ses:</span>
+                  <span className="voice-name">{getVoiceDisplayName(selectedVoice)}</span>
+                </div>
+                <div className="selected-speed-info">
+                  <span className="speed-label">Hız:</span>
+                  <span className="speed-value">{speechRate}x</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {currentSentence && (
+            <div className="current-reading">
+              <div className="reading-header">
+                <span>Okunan:</span>
+                <span className="sentence-progress">
+                  {currentSentenceIndex + 1} / {sentences.length}
+                </span>
+              </div>
+              <div className="sentence-container">
+                {currentSentence.substring(0, wordStart)}
+                {currentWord && (
+                  <span className="highlighted-word">
+                    {currentWord}
+                  </span>
+                )}
+                {currentSentence.substring(wordEnd)}
+              </div>
+            </div>
+          )}
+
+          <div className="tts-controls">
+            {!isSpeaking ? (
+              <button className="tts-btn primary" onClick={handleSpeak}>
+                <span role="img" aria-label="play">▶️</span> 
+                <span>Seslendir</span>
+              </button>
+            ) : (
+              <div className="control-group">
+                {isPaused ? (
+                  <button className="tts-btn success" onClick={handleResume}>
+                    <span role="img" aria-label="resume">▶️</span> 
+                    <span>Devam Et</span>
+                  </button>
+                ) : (
+                  <button className="tts-btn warning" onClick={handlePause}>
+                    <span role="img" aria-label="pause">⏸️</span> 
+                    <span>Duraklat</span>
+                  </button>
+                )}
+                <button className="tts-btn danger" onClick={handleStop}>
+                  <span role="img" aria-label="stop">⏹️</span> 
+                  <span>Durdur</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main App Component with Theme Provider
+function AppWithTheme() {
+  return (
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
+  );
+}
+
+export default AppWithTheme;

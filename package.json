@@ -1,7 +1,36 @@
 {
   "name": "tts-web-app",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "description": "Modern ve kullanıcı dostu text-to-speech (TTS) web uygulaması. Metinlerinizi doğal sesle dinleyin, gelişmiş özellikler ile okuma deneyiminizi kişiselleştirin.",
+  "keywords": [
+    "text-to-speech",
+    "tts",
+    "speech-synthesis",
+    "accessibility",
+    "react",
+    "pwa",
+    "türkçe",
+    "turkish",
+    "web-speech-api",
+    "voice",
+    "audio",
+    "reading"
+  ],
+  "author": {
+    "name": "Selman Sahbudak",
+    "email": "selmansahbudak1@gmail.com",
+    "url": "https://www.selmansahbudak.com.tr"
+  },
+  "license": "MIT",
+  "homepage": "https://your-domain.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Selman-S/tts-web-app.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Selman-S/tts-web-app/issues"
+  },
+  "private": false,
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",

@@ -1,0 +1,155 @@
+/* Text Input Section */
+.text-input-section {
+  margin-bottom: 20px;
+}
+
+.error-message {
+  background: rgba(245, 101, 101, 0.1);
+  color: var(--danger);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(245, 101, 101, 0.2);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.error-message::before {
+  content: '⚠️';
+  font-size: 16px;
+}
+
+.input-container {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 2px 8px var(--shadow-light);
+  transition: all 0.2s ease;
+}
+
+.input-container:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 4px 20px rgba(0, 123, 255, 0.1);
+}
+
+.text-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: inherit;
+  resize: vertical;
+  transition: all 0.2s ease;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.text-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--input-bg);
+}
+
+.text-textarea::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.input-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.char-counter {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.current-settings {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--bg-light);
+  border-radius: 6px;
+  border: 1px solid var(--border-light);
+}
+
+.setting-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.setting-value {
+  font-size: 11px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .input-container {
+    padding: 12px;
+  }
+
+  .text-textarea {
+    min-height: 80px;
+    font-size: 14px;
+  }
+
+  .input-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .current-settings {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .text-input-section {
+    margin-bottom: 16px;
+  }
+
+  .input-container {
+    padding: 10px;
+  }
+
+  .text-textarea {
+    min-height: 70px;
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  .current-settings {
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .setting-item {
+    width: 100%;
+    justify-content: space-between;
+  }
+} 

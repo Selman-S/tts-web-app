@@ -1,0 +1,164 @@
+/* Current Reading Display */
+.current-reading {
+  background: rgba(23, 162, 184, 0.05);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border-left: 3px solid #17a2b8;
+  border: 1px solid rgba(23, 162, 184, 0.2);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+[data-theme="dark"] .current-reading {
+  background: rgba(23, 162, 184, 0.1);
+  border-left-color: #4dd0e1;
+  border-color: rgba(77, 208, 225, 0.3);
+}
+
+.reading-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.reading-label {
+  color: #0c5460;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reading-label::before {
+  content: '📖';
+  font-size: 14px;
+}
+
+[data-theme="dark"] .reading-label {
+  color: #b3e5fc;
+}
+
+.sentence-progress {
+  background: #17a2b8;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+[data-theme="dark"] .sentence-progress {
+  background: #4dd0e1;
+  color: #263238;
+}
+
+.sentence-container {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  word-wrap: break-word;
+  font-weight: 400;
+  letter-spacing: 0.3px;
+}
+
+.highlighted-word {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #333;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+  animation: highlight 0.8s ease-in-out;
+  box-shadow: 0 2px 4px rgba(255, 215, 0, 0.3);
+  position: relative;
+}
+
+@keyframes highlight {
+  0% {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    transform: scale(1);
+  }
+  50% {
+    background: linear-gradient(135deg, #ffed4e, #ffd700);
+    transform: scale(1.05);
+  }
+  100% {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    transform: scale(1);
+  }
+}
+
+.highlighted-word::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #ffd700, transparent);
+  border-radius: 1px;
+  animation: underline 0.8s ease-in-out;
+}
+
+@keyframes underline {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .current-reading {
+    padding: 12px;
+  }
+
+  .sentence-container {
+    font-size: 15px;
+  }
+
+  .reading-header {
+    font-size: 11px;
+  }
+
+  .sentence-progress {
+    font-size: 9px;
+    padding: 2px 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .current-reading {
+    padding: 10px;
+    margin-bottom: 16px;
+  }
+
+  .sentence-container {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .reading-header {
+    margin-bottom: 8px;
+  }
+
+  .highlighted-word {
+    padding: 1px 4px;
+    font-size: 14px;
+  }
+} 
