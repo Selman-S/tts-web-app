@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
-import { SpeechProvider } from './context/SpeechContext';
 import HomePage from './pages/HomePage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
@@ -11,7 +10,7 @@ import './App.css';
 
 /**
  * Main TTS Application Component with Routing
- * Clean, modular structure with page-based routing
+ * Simplified structure with hook-based speech management
  */
 function App() {
   return (
@@ -27,17 +26,16 @@ function App() {
 }
 
 /**
- * App wrapper with all providers and Router
+ * App wrapper with providers and Router
+ * Removed SpeechProvider for simplified hook-based approach
  */
 function AppWithProviders() {
   return (
     <LanguageProvider>
       <ThemeProvider>
-        <SpeechProvider>
-          <Router>
-            <App />
-          </Router>
-        </SpeechProvider>
+        <Router>
+          <App />
+        </Router>
       </ThemeProvider>
     </LanguageProvider>
   );

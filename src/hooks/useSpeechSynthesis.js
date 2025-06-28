@@ -1,227 +1,327 @@
-import { useState, useEffect, useCallback } from 'react';
-import { STORAGE_KEYS, SPEECH_RATE_DEFAULT } from '../constants';
-import { saveToStorage, loadFromStorage, removeFromStorage } from '../utils/storageUtils';
-import { splitIntoSentences } from '../utils/textUtils';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
- * Custom hook for speech synthesis functionality
- * Manages speech state, voice selection, and audio controls
+ * Simple and reliable Speech Synthesis hook for mobile browsers
+ * Focuses on core functionality that works consistently across devices
  */
 export const useSpeechSynthesis = () => {
-  const [voices, setVoices] = useState([]);
-  const [selectedVoice, setSelectedVoice] = useState(null);
+  // Basic state
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [currentSentence, setCurrentSentence] = useState('');
-  const [currentWord, setCurrentWord] = useState('');
-  const [wordStart, setWordStart] = useState(0);
-  const [wordEnd, setWordEnd] = useState(0);
-  const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
-  const [sentences, setSentences] = useState([]);
-  const [speechRate, setSpeechRate] = useState(SPEECH_RATE_DEFAULT);
-
-  // Load voices and speech rate on mount
+  const [currentText, setCurrentText] = useState('');
+  const [speechRate, setSpeechRate] = useState(1.0);
+  const [selectedVoice, setSelectedVoice] = useState(null);
+  const [voices, setVoices] = useState([]);
+  
+  // Progress tracking - simplified
+  const [progress, setProgress] = useState(0);
+  const [totalChars, setTotalChars] = useState(0);
+  
+  // Refs for cleanup and state management
+  const utteranceRef = useRef(null);
+  const isPlayingRef = useRef(false);
+  const startTimeRef = useRef(null);
+  const pausedTimeRef = useRef(0);
+  
+  // Load voices on mount
   useEffect(() => {
     const loadVoices = () => {
       const availableVoices = window.speechSynthesis.getVoices();
-      setVoices(availableVoices.filter(voice => voice.lang.startsWith('tr')));
+      setVoices(availableVoices);
+      
+      // Set default Turkish voice if available
+      const turkishVoice = availableVoices.find(voice => 
+        voice.lang.includes('tr') || voice.lang.includes('TR')
+      );
+      if (turkishVoice && !selectedVoice) {
+        setSelectedVoice(turkishVoice);
+      }
     };
 
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
+  }, [selectedVoice]);
 
-    // Load speech rate from localStorage
-    const savedRate = loadFromStorage(STORAGE_KEYS.SPEECH_RATE);
+  // Load saved settings
+  useEffect(() => {
+    const savedRate = localStorage.getItem('tts-speech-rate');
     if (savedRate) {
       const rate = parseFloat(savedRate);
       if (rate >= 0.5 && rate <= 2.0) {
         setSpeechRate(rate);
       }
     }
-  }, []);
 
-  // Save speech rate when it changes
+    const savedVoice = localStorage.getItem('tts-selected-voice');
+    if (savedVoice) {
+      try {
+        const voiceData = JSON.parse(savedVoice);
+        setTimeout(() => {
+          const voice = voices.find(v => v.name === voiceData.name);
+          if (voice) setSelectedVoice(voice);
+        }, 100);
+      } catch (e) {
+        console.error('Error loading voice:', e);
+      }
+    }
+  }, [voices]);
+
+  // Save settings when changed
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SPEECH_RATE, speechRate.toString());
+    localStorage.setItem('tts-speech-rate', speechRate.toString());
   }, [speechRate]);
 
-  // Save current reading progress
-  const saveProgress = useCallback((textContent, sentenceIndex, sentences) => {
-    const progressData = {
-      text: textContent,
-      currentSentenceIndex: sentenceIndex,
-      sentences: sentences,
-      timestamp: Date.now()
-    };
-    saveToStorage(STORAGE_KEYS.CURRENT_PROGRESS, progressData);
-  }, []);
-
-  // Load reading progress
-  const loadProgress = useCallback(() => {
-    const progressData = loadFromStorage(STORAGE_KEYS.CURRENT_PROGRESS);
-    if (progressData) {
-      return progressData;
+  useEffect(() => {
+    if (selectedVoice) {
+      localStorage.setItem('tts-selected-voice', JSON.stringify({
+        name: selectedVoice.name,
+        lang: selectedVoice.lang
+      }));
     }
-    return null;
-  }, []);
+  }, [selectedVoice]);
 
-  // Check if there's saved progress
-  const hasProgress = useCallback(() => {
-    return loadFromStorage(STORAGE_KEYS.CURRENT_PROGRESS) !== null;
-  }, []);
-
-  // Speak from specific sentence index
-  const speakFromIndex = useCallback((sentenceArray, startIndex, text) => {
-    if (startIndex >= sentenceArray.length) {
-      handleStop();
-      return;
-    }
-
-    const sentence = sentenceArray[startIndex];
-    if (!sentence || !sentence.trim()) {
-      // Skip empty sentence and continue with next
-      if (startIndex < sentenceArray.length - 1) {
-        setCurrentSentenceIndex(startIndex + 1);
-        speakFromIndex(sentenceArray, startIndex + 1, text);
-      } else {
-        handleStop();
+  // Handle visibility change for mobile browsers
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && isSpeaking && !isPaused) {
+        // Don't pause automatically on mobile, let user control it
+        console.log('Page hidden, speech continues...');
+      } else if (!document.hidden && isSpeaking && isPaused) {
+        // Optional: Auto-resume when page becomes visible again
+        console.log('Page visible again');
       }
-      return;
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isSpeaking, isPaused]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (utteranceRef.current) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  // Simple progress simulation since onboundary doesn't work reliably on mobile
+  const simulateProgress = useCallback((text, rate) => {
+    if (!text || !isSpeaking) return;
+    
+    const chars = text.length;
+    const wordsPerMinute = 200; // Average reading speed
+    const charsPerMinute = wordsPerMinute * 5; // Approximate chars per word
+    const adjustedSpeed = charsPerMinute * rate;
+    const totalTimeMs = (chars / adjustedSpeed) * 60 * 1000;
+    const updateInterval = 500; // Update every 500ms
+    
+    let currentTime = pausedTimeRef.current;
+    
+    const interval = setInterval(() => {
+      if (!isPlayingRef.current) {
+        clearInterval(interval);
+        return;
+      }
+      
+      currentTime += updateInterval;
+      const newProgress = Math.min((currentTime / totalTimeMs) * 100, 100);
+      setProgress(newProgress);
+      
+      if (newProgress >= 100) {
+        clearInterval(interval);
+      }
+    }, updateInterval);
+    
+    return interval;
+  }, [isSpeaking]);
+
+  // Start speaking
+  const speak = useCallback((text) => {
+    if (!text || !text.trim()) {
+      throw new Error('Lütfen bir metin girin.');
     }
 
-    const trimmedSentence = sentence.trim();
-    setCurrentSentence(trimmedSentence);
-    setCurrentWord('');
-    setWordStart(0);
-    setWordEnd(0);
-    setCurrentSentenceIndex(startIndex);
+    if (!('speechSynthesis' in window)) {
+      throw new Error('Tarayıcınız bu özelliği desteklemiyor.');
+    }
 
-    // Save progress
-    saveProgress(text, startIndex, sentenceArray);
-
-    const utterance = new window.SpeechSynthesisUtterance(trimmedSentence);
-    utterance.lang = 'tr-TR';
+    // Stop any existing speech
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text.trim());
     utterance.rate = speechRate;
+    utterance.lang = 'tr-TR';
+    
     if (selectedVoice) {
       utterance.voice = selectedVoice;
     }
 
-    // Track word boundaries for highlighting
-    utterance.onboundary = (event) => {
-      if (event.name === 'word' && event.charIndex !== undefined && event.charLength !== undefined) {
-        const word = trimmedSentence.substring(event.charIndex, event.charIndex + event.charLength);
-        if (word && word.trim()) {
-          setCurrentWord(word);
-          setWordStart(event.charIndex);
-          setWordEnd(event.charIndex + event.charLength);
-        }
-      }
+    // Set up event handlers
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      setIsPaused(false);
+      isPlayingRef.current = true;
+      startTimeRef.current = Date.now();
+      pausedTimeRef.current = 0;
+      setProgress(0);
+      setTotalChars(text.length);
+      
+      // Start progress simulation
+      simulateProgress(text, speechRate);
     };
 
     utterance.onend = () => {
-      if (startIndex < sentenceArray.length - 1) {
-        setCurrentSentenceIndex(startIndex + 1);
-        speakFromIndex(sentenceArray, startIndex + 1, text);
-      } else {
-        handleStop();
-      }
+      setIsSpeaking(false);
+      setIsPaused(false);
+      isPlayingRef.current = false;
+      setProgress(100);
+      setCurrentText('');
+      localStorage.removeItem('tts-current-text');
+      localStorage.removeItem('tts-paused-time');
     };
 
     utterance.onerror = (event) => {
       console.error('Speech synthesis error:', event);
-      handleStop();
+      setIsSpeaking(false);
+      setIsPaused(false);
+      isPlayingRef.current = false;
+      setCurrentText('');
     };
 
-    window.speechSynthesis.speak(utterance);
-  }, [speechRate, selectedVoice, saveProgress]);
-
-  // Start speaking text
-  const handleSpeak = useCallback((text) => {
-    if (!('speechSynthesis' in window)) {
-      throw new Error('Tarayıcınız bu özelliği desteklemiyor.');
-    }
-    if (!text || text.trim() === '') {
-      throw new Error('Lütfen bir metin girin.');
-    }
-
-    // Split text into sentences
-    const textSentences = splitIntoSentences(text);
-    if (textSentences.length === 0) {
-      throw new Error('Lütfen geçerli bir metin girin.');
-    }
-
-    setSentences(textSentences);
-    setCurrentSentenceIndex(0);
-    setIsSpeaking(true);
-    setIsPaused(false);
+    // Save current text for resume functionality
+    setCurrentText(text);
+    localStorage.setItem('tts-current-text', text);
     
-    speakFromIndex(textSentences, 0, text);
-  }, [speakFromIndex]);
-
-  // Resume speaking
-  const handleResume = useCallback(() => {
-    const progress = loadProgress();
-    if (progress && progress.sentences && progress.currentSentenceIndex < progress.sentences.length) {
-      setSentences(progress.sentences);
-      setCurrentSentenceIndex(progress.currentSentenceIndex);
-      setIsSpeaking(true);
-      setIsPaused(false);
-      speakFromIndex(progress.sentences, progress.currentSentenceIndex, progress.text);
-      return progress.text; // Return text to update parent component
-    } else {
-      window.speechSynthesis.resume();
-      setIsPaused(false);
-    }
-    return null;
-  }, [loadProgress, speakFromIndex]);
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+    
+    // Add to history
+    addToHistory(text);
+    
+  }, [speechRate, selectedVoice, simulateProgress]);
 
   // Pause speaking
-  const handlePause = useCallback(() => {
-    window.speechSynthesis.pause();
-    setIsPaused(true);
-  }, []);
+  const pause = useCallback(() => {
+    if (isSpeaking && !isPaused) {
+      window.speechSynthesis.pause();
+      setIsPaused(true);
+      isPlayingRef.current = false;
+      pausedTimeRef.current = Date.now() - (startTimeRef.current || Date.now());
+      localStorage.setItem('tts-paused-time', pausedTimeRef.current.toString());
+    }
+  }, [isSpeaking, isPaused]);
+
+  // Resume speaking
+  const resume = useCallback(() => {
+    if (isPaused) {
+      // Check if speech synthesis is actually paused
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+        setIsPaused(false);
+        isPlayingRef.current = true;
+        startTimeRef.current = Date.now() - pausedTimeRef.current;
+        simulateProgress(currentText, speechRate);
+      } else {
+        // If not paused, restart from beginning
+        if (currentText) {
+          speak(currentText);
+        }
+      }
+    }
+  }, [isPaused, currentText, speechRate, speak, simulateProgress]);
 
   // Stop speaking
-  const handleStop = useCallback(() => {
+  const stop = useCallback(() => {
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
     setIsPaused(false);
-    setCurrentSentence('');
-    setCurrentWord('');
-    setCurrentSentenceIndex(0);
-    // Clear progress when stopped
-    removeFromStorage(STORAGE_KEYS.CURRENT_PROGRESS);
+    isPlayingRef.current = false;
+    setProgress(0);
+    setCurrentText('');
+    localStorage.removeItem('tts-current-text');
+    localStorage.removeItem('tts-paused-time');
   }, []);
 
-  // Update speech rate
-  const updateSpeechRate = useCallback((newRate) => {
-    if (newRate >= 0.5 && newRate <= 2.0) {
-      setSpeechRate(newRate);
+  // Load paused session
+  const loadPausedSession = useCallback(() => {
+    const savedText = localStorage.getItem('tts-current-text');
+    const savedTime = localStorage.getItem('tts-paused-time');
+    
+    if (savedText && savedTime) {
+      setCurrentText(savedText);
+      setIsPaused(true);
+      pausedTimeRef.current = parseInt(savedTime, 10);
+      return { text: savedText, hasSession: true };
+    }
+    
+    return { hasSession: false };
+  }, []);
+
+  // Add to history
+  const addToHistory = useCallback((text) => {
+    const historyItem = {
+      id: Date.now(),
+      text: text,
+      timestamp: new Date().toLocaleString('tr-TR'),
+      preview: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+      category: 'other',
+      isFavorite: false,
+      wordCount: text.trim().split(/\s+/).length
+    };
+    
+    const savedHistory = localStorage.getItem('tts-history');
+    let history = [];
+    if (savedHistory) {
+      try {
+        history = JSON.parse(savedHistory);
+      } catch (e) {
+        console.error('Error loading history:', e);
+      }
+    }
+    
+    // Prevent duplicates
+    const newHistory = [historyItem, ...history.filter(item => item.text !== text)];
+    const limitedHistory = newHistory.slice(0, 150);
+    localStorage.setItem('tts-history', JSON.stringify(limitedHistory));
+  }, []);
+
+  // Voice selection
+  const selectVoice = useCallback((voice) => {
+    setSelectedVoice(voice);
+  }, []);
+
+  // Speech rate change
+  const changeRate = useCallback((rate) => {
+    if (rate >= 0.5 && rate <= 2.0) {
+      setSpeechRate(rate);
     }
   }, []);
 
   return {
     // State
-    voices,
-    selectedVoice,
     isSpeaking,
     isPaused,
-    currentSentence,
-    currentWord,
-    wordStart,
-    wordEnd,
-    currentSentenceIndex,
-    sentences,
+    currentText,
     speechRate,
+    selectedVoice,
+    voices,
+    progress,
+    totalChars,
     
     // Actions
-    setSelectedVoice,
-    handleSpeak,
-    handleResume,
-    handlePause,
-    handleStop,
-    updateSpeechRate,
-    hasProgress,
-    loadProgress
+    speak,
+    pause,
+    resume,
+    stop,
+    selectVoice,
+    changeRate,
+    loadPausedSession,
+    
+    // Computed
+    hasActiveSession: isSpeaking || isPaused,
+    canResume: isPaused && currentText
   };
 }; 

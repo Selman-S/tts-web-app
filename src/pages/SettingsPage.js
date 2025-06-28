@@ -2,16 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useSpeech } from '../context/SpeechContext';
 import { useTranslation } from '../translations';
 import Header from '../components/Header/Header';
-import VoiceSelector from '../components/VoiceSelector/VoiceSelector';
-import SpeedControl from '../components/SpeedControl/SpeedControl';
-import { getVoiceDisplayName, getSpeedLabel } from '../utils/textUtils';
 import { FaArrowLeft, FaSun, FaMoon, FaTrash, FaChevronRight } from 'react-icons/fa';
+import './SettingsPage.css';
 
 /**
- * Settings Page component for app configuration
+ * Simplified Settings Page component for app configuration
+ * Works directly with localStorage for simplified speech settings
  */
 const SettingsPage = () => {
   const navigate = useNavigate();
@@ -19,28 +17,40 @@ const SettingsPage = () => {
   const { currentLanguage, changeLanguage } = useLanguage();
   const { t } = useTranslation(currentLanguage);
   
-  // Global speech context
-  const {
-    speechRate,
-    selectedVoice,
-    handleVoiceSelect,
-    handleSpeedChange
-  } = useSpeech();
-  
   // Local settings state
   const [voices, setVoices] = useState([]);
+  const [selectedVoice, setSelectedVoice] = useState(null);
+  const [speechRate, setSpeechRate] = useState(1.0);
   const [showVoiceDropdown, setShowVoiceDropdown] = useState(false);
   const [showSpeedDropdown, setShowSpeedDropdown] = useState(false);
 
-  // Load voices on mount
+  // Load voices and settings on mount
   useEffect(() => {
-    const loadVoices = () => {
+    const loadVoicesAndSettings = () => {
       const availableVoices = window.speechSynthesis.getVoices();
-      setVoices(availableVoices.filter(voice => voice.lang.startsWith('tr')));
+      setVoices(availableVoices);
+
+      // Load speech rate
+      const savedRate = localStorage.getItem('tts-speech-rate');
+      if (savedRate) {
+        setSpeechRate(parseFloat(savedRate));
+      }
+
+      // Load selected voice
+      const savedVoice = localStorage.getItem('tts-selected-voice');
+      if (savedVoice && availableVoices.length > 0) {
+        try {
+          const voiceData = JSON.parse(savedVoice);
+          const voice = availableVoices.find(v => v.name === voiceData.name);
+          if (voice) setSelectedVoice(voice);
+        } catch (e) {
+          console.error('Error loading voice:', e);
+        }
+      }
     };
 
-    loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
+    loadVoicesAndSettings();
+    window.speechSynthesis.onvoiceschanged = loadVoicesAndSettings;
   }, []);
 
   // Close dropdowns when clicking outside
@@ -59,27 +69,54 @@ const SettingsPage = () => {
   }, []);
 
   // Event handlers
-  const handleVoiceSelectLocal = (voice) => {
-    handleVoiceSelect(voice);
+  const handleVoiceSelect = (voice) => {
+    setSelectedVoice(voice);
+    if (voice) {
+      localStorage.setItem('tts-selected-voice', JSON.stringify({
+        name: voice.name,
+        lang: voice.lang
+      }));
+    } else {
+      localStorage.removeItem('tts-selected-voice');
+    }
     setShowVoiceDropdown(false);
   };
 
-  const handleSpeedChangeLocal = (newRate) => {
-    handleSpeedChange(newRate);
+  const handleSpeedChange = (newRate) => {
+    setSpeechRate(newRate);
+    localStorage.setItem('tts-speech-rate', newRate.toString());
     setShowSpeedDropdown(false);
   };
 
+  const getVoiceDisplayName = (voice) => {
+    if (!voice) return 'Varsayılan Ses';
+    return `${voice.name} (${voice.lang})`;
+  };
+
+  const getSpeedLabel = (rate) => {
+    const speedLabels = {
+      0.5: '0.5x - Çok Yavaş',
+      0.75: '0.75x - Yavaş',
+      1.0: '1.0x - Normal',
+      1.25: '1.25x - Hızlı',
+      1.5: '1.5x - Çok Hızlı',
+      1.75: '1.75x - Ultra Hızlı',
+      2.0: '2.0x - Maksimum'
+    };
+    return speedLabels[rate] || `${rate}x`;
+  };
+
   const clearAllData = () => {
-    if (window.confirm(t('settings.confirmClearData'))) {
+    if (window.confirm('Tüm veriler silinecek. Emin misiniz?')) {
       localStorage.removeItem('tts-history');
       localStorage.removeItem('tts-speech-rate');
       localStorage.removeItem('tts-selected-voice');
-      localStorage.removeItem('tts-current-progress');
-      localStorage.removeItem('tts-active-speech');
+      localStorage.removeItem('tts-current-text');
+      localStorage.removeItem('tts-paused-time');
       localStorage.removeItem('tts-language');
-      handleSpeedChange(1.0);
-      handleVoiceSelect(null);
-      alert(t('settings.dataCleared'));
+      setSpeechRate(1.0);
+      setSelectedVoice(null);
+      alert('Tüm veriler temizlendi.');
     }
   };
 
@@ -87,162 +124,94 @@ const SettingsPage = () => {
     <div className="container">
       <Header />
 
-      <div className="tts-card">
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
+      <div className="settings-page">
+        <div className="page-header">
           <button 
             onClick={() => navigate('/')}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '20px',
-              cursor: 'pointer',
-              marginRight: '16px',
-              color: 'var(--text-secondary)'
-            }}
+            className="back-button"
+            aria-label="Ana sayfaya dön"
           >
             <FaArrowLeft />
           </button>
-          <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: 'var(--text-primary)' }}>
-            {t('settings.title')}
-          </h1>
+          <h1 className="page-title">⚙️ Ayarlar</h1>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className="settings-content">
+          
+          {/* Theme Settings */}
+          <div className="setting-section">
+            <h3 className="section-title">🎨 Tema Ayarları</h3>
+            <div className="theme-buttons">
+              <button
+                onClick={toggleTheme}
+                className={`theme-button ${isDarkMode ? 'active' : ''}`}
+              >
+                <FaMoon className="theme-icon" />
+                <span>Koyu Tema</span>
+                {isDarkMode && <span className="active-indicator">✓</span>}
+              </button>
+              <button
+                onClick={toggleTheme}
+                className={`theme-button ${!isDarkMode ? 'active' : ''}`}
+              >
+                <FaSun className="theme-icon" />
+                <span>Açık Tema</span>
+                {!isDarkMode && <span className="active-indicator">✓</span>}
+              </button>
+            </div>
+          </div>
+
           {/* Language Settings */}
           <div className="setting-section">
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
-              {t('settings.languageSelection')}
-            </h3>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <h3 className="section-title">🌐 Dil Ayarları</h3>
+            <div className="language-buttons">
               <button
                 onClick={() => changeLanguage('tr')}
-                style={{
-                  flex: 1,
-                  background: currentLanguage === 'tr' ? 'var(--primary)' : 'var(--bg-light)',
-                  color: currentLanguage === 'tr' ? 'white' : 'var(--text-primary)',
-                  border: `1px solid ${currentLanguage === 'tr' ? 'var(--primary)' : 'var(--border-light)'}`,
-                  borderRadius: '12px',
-                  padding: '16px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
+                className={`language-button ${currentLanguage === 'tr' ? 'active' : ''}`}
               >
-                🇹🇷 {t('settings.turkish')}
+                🇹🇷 Türkçe
+                {currentLanguage === 'tr' && <span className="active-indicator">✓</span>}
               </button>
               <button
                 onClick={() => changeLanguage('en')}
-                style={{
-                  flex: 1,
-                  background: currentLanguage === 'en' ? 'var(--primary)' : 'var(--bg-light)',
-                  color: currentLanguage === 'en' ? 'white' : 'var(--text-primary)',
-                  border: `1px solid ${currentLanguage === 'en' ? 'var(--primary)' : 'var(--border-light)'}`,
-                  borderRadius: '12px',
-                  padding: '16px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
+                className={`language-button ${currentLanguage === 'en' ? 'active' : ''}`}
               >
-                🇺🇸 {t('settings.english')}
+                🇺🇸 English
+                {currentLanguage === 'en' && <span className="active-indicator">✓</span>}
               </button>
             </div>
           </div>
 
           {/* Voice Settings */}
           <div className="setting-section">
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
-              {t('settings.voiceSettings')}
-            </h3>
-            <div className="dropdown-container" style={{ position: 'relative' }}>
+            <h3 className="section-title">🎤 Ses Ayarları</h3>
+            <div className="dropdown-container">
               <div 
                 onClick={() => setShowVoiceDropdown(!showVoiceDropdown)}
-                style={{
-                  background: 'var(--bg-light)',
-                  border: '1px solid var(--border-light)',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}
+                className="dropdown-trigger"
               >
-                <div>
-                  <div style={{ fontWeight: '500', color: 'var(--text-primary)', marginBottom: '4px' }}>
-                    {t('settings.selectedVoice')}
-                  </div>
-                  <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-                    {getVoiceDisplayName(selectedVoice, t)}
-                  </div>
+                <div className="dropdown-content">
+                  <div className="dropdown-label">Seçili Ses</div>
+                  <div className="dropdown-value">{getVoiceDisplayName(selectedVoice)}</div>
                 </div>
-                <FaChevronRight 
-                  style={{ 
-                    color: 'var(--text-secondary)', 
-                    fontSize: '16px',
-                    transform: showVoiceDropdown ? 'rotate(90deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.2s ease'
-                  }} 
-                />
+                <FaChevronRight className={`dropdown-arrow ${showVoiceDropdown ? 'open' : ''}`} />
               </div>
               
               {showVoiceDropdown && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  background: 'var(--card-bg)',
-                  border: '1px solid var(--border-light)',
-                  borderRadius: '12px',
-                  boxShadow: '0 4px 20px var(--shadow-light)',
-                  zIndex: 1000,
-                  marginTop: '4px',
-                  maxHeight: '200px',
-                  overflowY: 'auto'
-                }}>
-                  <div 
-                    onClick={() => handleVoiceSelectLocal(null)}
-                    style={{
-                      padding: '12px 16px',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid var(--border-light)',
-                      backgroundColor: !selectedVoice ? 'var(--bg-light)' : 'transparent',
-                      transition: 'background-color 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--bg-light)'}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = !selectedVoice ? 'var(--bg-light)' : 'transparent'}
+                <div className="dropdown-menu">
+                  <div
+                    onClick={() => handleVoiceSelect(null)}
+                    className={`dropdown-item ${!selectedVoice ? 'active' : ''}`}
                   >
-                    <div style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
-                      {t('voiceSelector.defaultVoice')}
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                      {t('voiceSelector.systemDefault')}
-                    </div>
+                    Varsayılan Ses
                   </div>
                   {voices.map((voice, index) => (
-                    <div 
-                      key={voice.name}
-                      onClick={() => handleVoiceSelectLocal(voice)}
-                      style={{
-                        padding: '12px 16px',
-                        cursor: 'pointer',
-                        borderBottom: index < voices.length - 1 ? '1px solid var(--border-light)' : 'none',
-                        backgroundColor: selectedVoice?.name === voice.name ? 'var(--bg-light)' : 'transparent',
-                        transition: 'background-color 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--bg-light)'}
-                      onMouseLeave={(e) => e.target.style.backgroundColor = selectedVoice?.name === voice.name ? 'var(--bg-light)' : 'transparent'}
+                    <div
+                      key={index}
+                      onClick={() => handleVoiceSelect(voice)}
+                      className={`dropdown-item ${selectedVoice?.name === voice.name ? 'active' : ''}`}
                     >
-                      <div style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
-                        {getVoiceDisplayName(voice, t)}
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        {voice.name}
-                      </div>
+                      {voice.name} ({voice.lang})
                     </div>
                   ))}
                 </div>
@@ -252,77 +221,28 @@ const SettingsPage = () => {
 
           {/* Speed Settings */}
           <div className="setting-section">
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
-              {t('speedControl.title')}
-            </h3>
-            <div className="dropdown-container" style={{ position: 'relative' }}>
+            <h3 className="section-title">⚡ Hız Ayarları</h3>
+            <div className="dropdown-container">
               <div 
                 onClick={() => setShowSpeedDropdown(!showSpeedDropdown)}
-                style={{
-                  background: 'var(--bg-light)',
-                  border: '1px solid var(--border-light)',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}
+                className="dropdown-trigger"
               >
-                <div>
-                  <div style={{ fontWeight: '500', color: 'var(--text-primary)', marginBottom: '4px' }}>
-                    {t('settings.readingSpeed')}
-                  </div>
-                  <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-                    {speechRate}x - {getSpeedLabel(speechRate, t)}
-                  </div>
+                <div className="dropdown-content">
+                  <div className="dropdown-label">Okuma Hızı</div>
+                  <div className="dropdown-value">{getSpeedLabel(speechRate)}</div>
                 </div>
-                <FaChevronRight 
-                  style={{ 
-                    color: 'var(--text-secondary)', 
-                    fontSize: '16px',
-                    transform: showSpeedDropdown ? 'rotate(90deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.2s ease'
-                  }} 
-                />
+                <FaChevronRight className={`dropdown-arrow ${showSpeedDropdown ? 'open' : ''}`} />
               </div>
               
               {showSpeedDropdown && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  background: 'var(--card-bg)',
-                  border: '1px solid var(--border-light)',
-                  borderRadius: '12px',
-                  boxShadow: '0 4px 20px var(--shadow-light)',
-                  zIndex: 1000,
-                  marginTop: '4px',
-                  maxHeight: '200px',
-                  overflowY: 'auto'
-                }}>
-                  {[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((rate, index) => (
-                    <div 
+                <div className="dropdown-menu">
+                  {[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((rate) => (
+                    <div
                       key={rate}
-                      onClick={() => handleSpeedChangeLocal(rate)}
-                      style={{
-                        padding: '12px 16px',
-                        cursor: 'pointer',
-                        borderBottom: index < 6 ? '1px solid var(--border-light)' : 'none',
-                        backgroundColor: speechRate === rate ? 'var(--bg-light)' : 'transparent',
-                        transition: 'background-color 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--bg-light)'}
-                      onMouseLeave={(e) => e.target.style.backgroundColor = speechRate === rate ? 'var(--bg-light)' : 'transparent'}
+                      onClick={() => handleSpeedChange(rate)}
+                      className={`dropdown-item ${speechRate === rate ? 'active' : ''}`}
                     >
-                      <div style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
-                        {rate}x
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        {getSpeedLabel(rate, t)}
-                      </div>
+                      {getSpeedLabel(rate)}
                     </div>
                   ))}
                 </div>
@@ -330,95 +250,21 @@ const SettingsPage = () => {
             </div>
           </div>
 
-          {/* Theme Settings */}
-          <div className="setting-section">
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
-              {t('settings.themeSelection')}
-            </h3>
-            <div 
-              onClick={toggleTheme}
-              style={{
-                background: 'var(--bg-light)',
-                border: '1px solid var(--border-light)',
-                borderRadius: '12px',
-                padding: '16px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: '500', color: 'var(--text-primary)', marginBottom: '4px' }}>
-                  {t('settings.theme')}
-                </div>
-                <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-                  {isDarkMode ? t('settings.dark') : t('settings.light')}
-                </div>
-              </div>
-              <span style={{ fontSize: '20px', color: 'var(--text-primary)' }}>
-                {isDarkMode ? <FaMoon /> : <FaSun />}
-              </span>
-            </div>
-          </div>
-
           {/* Data Management */}
           <div className="setting-section">
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
-              {t('settings.dataManagement')}
-            </h3>
-            <div 
+            <h3 className="section-title">🗂️ Veri Yönetimi</h3>
+            <button
               onClick={clearAllData}
-              style={{
-                background: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: '12px',
-                padding: '16px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
+              className="danger-button"
             >
-              <div>
-                <div style={{ fontWeight: '500', color: 'var(--danger)', marginBottom: '4px' }}>
-                  {t('settings.clearAllData')}
-                </div>
-                <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-                  {t('settings.confirmClearData')}
-                </div>
-              </div>
-              <FaTrash style={{ color: 'var(--danger)', fontSize: '18px' }} />
-            </div>
+              <FaTrash className="button-icon" />
+              <span>Tüm Verileri Temizle</span>
+            </button>
+            <p className="danger-description">
+              Bu işlem tüm geçmiş kayıtlarınızı, ayarlarınızı ve duraklatılmış okuma oturumunuzu kalıcı olarak siler.
+            </p>
           </div>
 
-          {/* App Info */}
-          <div className="setting-section">
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
-              {t('settings.about')}
-            </h3>
-            <div style={{
-              background: 'var(--bg-light)',
-              border: '1px solid var(--border-light)',
-              borderRadius: '12px',
-              padding: '16px'
-            }}>
-              <div style={{ marginBottom: '8px' }}>
-                <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>{t('settings.version')}:</span>
-                <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>1.0.0</span>
-              </div>
-              <div style={{ marginBottom: '8px' }}>
-                <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>Features:</span>
-                <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>TTS, History, Progress</span>
-              </div>
-              <div>
-                <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>{t('settings.language')}:</span>
-                <span style={{ marginLeft: '8px', color: 'var(--text-secondary)' }}>Türkçe / English</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

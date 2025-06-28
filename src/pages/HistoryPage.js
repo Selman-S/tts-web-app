@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
-import { useSpeech } from '../context/SpeechContext';
 import { useTranslation } from '../translations';
 import Header from '../components/Header/Header';
 import History from '../components/History/History';
@@ -94,11 +93,8 @@ const HistoryPage = () => {
     setShowBulkActions(false);
   };
 
-  const { setCurrentText } = useSpeech();
-
   const loadFromHistory = (historyItem) => {
-    // Set the text in global context and navigate to home page
-    setCurrentText(historyItem.text);
+    // Navigate to home page with text data
     navigate('/', { state: { text: historyItem.text } });
   };
 

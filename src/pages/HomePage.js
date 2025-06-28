@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
-import { useSpeech } from '../context/SpeechContext';
+import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
 import { useTranslation } from '../translations';
 import Header from '../components/Header/Header';
-import TextInput from '../components/TextInput/TextInput';
-import ProgressBar from '../components/ProgressBar/ProgressBar';
-import CurrentReading from '../components/CurrentReading/CurrentReading';
 import AudioControls from '../components/AudioControls/AudioControls';
-import ResumeReading from '../components/ResumeReading/ResumeReading';
 import { MAX_CHARS } from '../constants';
+import './HomePage.css';
 
 /**
- * Home Page component with main TTS functionality
+ * Simplified Home Page with reliable TTS functionality
+ * Focuses on core features that work consistently on mobile browsers
  */
 const HomePage = () => {
   const navigate = useNavigate();
@@ -20,173 +18,233 @@ const HomePage = () => {
   const { currentLanguage } = useLanguage();
   const { t } = useTranslation(currentLanguage);
   
-  // Global speech context
+  // Speech synthesis hook
   const {
     isSpeaking,
     isPaused,
     currentText,
     speechRate,
     selectedVoice,
-    currentSentence,
-    currentWord,
-    wordStart,
-    wordEnd,
-    currentSentenceIndex,
-    sentences,
-    startTime,
-    totalWords,
-    startSpeaking,
-    handlePause,
-    handleResume,
-    handleStop,
-    handleVoiceSelect,
-    handleSpeedChange,
-    setCurrentText,
-    dismissPausedReading
-  } = useSpeech();
+    voices,
+    progress,
+    speak,
+    pause,
+    resume,
+    stop,
+    selectVoice,
+    changeRate,
+    loadPausedSession,
+    canResume
+  } = useSpeechSynthesis();
   
   // Local UI state
   const [text, setText] = useState('');
   const [error, setError] = useState('');
-  const [voices, setVoices] = useState([]);
   const [showResumeCard, setShowResumeCard] = useState(false);
-  
-
 
   // Load text from history if passed via navigation
   useEffect(() => {
     if (location.state && location.state.text) {
       setText(location.state.text);
-      setCurrentText(location.state.text);
       // Clear the state to prevent reloading on refresh
       navigate('/', { replace: true });
     }
-  }, [location.state, navigate, setCurrentText]);
+  }, [location.state, navigate]);
 
-  // Load voices on mount and when language changes
+  // Check for paused session on mount
   useEffect(() => {
-    const loadVoices = () => {
-      const availableVoices = window.speechSynthesis.getVoices();
-      const langPrefix = currentLanguage === 'en' ? 'en' : 'tr';
-      setVoices(availableVoices.filter(voice => voice.lang.startsWith(langPrefix)));
-    };
-
-    loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-  }, [currentLanguage]);
-
-  // Sync local text with global current text when there's an active speech
-  useEffect(() => {
-    if (currentText && currentText !== text) {
-      setText(currentText);
+    const session = loadPausedSession();
+    if (session.hasSession) {
+      setText(session.text);
+      setShowResumeCard(true);
     }
-  }, [currentText, text]);
+  }, [loadPausedSession]);
 
-  // Show resume card when there's a paused reading session
+  // Hide resume card when speaking starts
   useEffect(() => {
-    // Show resume card if:
-    // 1. There's paused content
-    // 2. User is not currently in an active reading session
-    // 3. There's text and sentences available
-    const shouldShowResume = isPaused && !isSpeaking && currentText && sentences.length > 0;
-    setShowResumeCard(shouldShowResume);
-  }, [isPaused, isSpeaking, currentText, sentences.length]);
+    if (isSpeaking) {
+      setShowResumeCard(false);
+    }
+  }, [isSpeaking]);
 
   // Event handlers
-  const handleChange = (e) => {
+  const handleTextChange = (e) => {
     if (e.target.value.length <= MAX_CHARS) {
       setText(e.target.value);
-      setCurrentText(e.target.value);
       setError('');
     }
   };
 
   const handleSpeak = () => {
-    if (!('speechSynthesis' in window)) {
-      setError(t('textInput.browserNotSupported'));
-      return;
-    }
-    if (!text || text.trim() === '') {
-      setError(t('textInput.enterText'));
-      return;
-    }
-    
-    setError('');
-    const result = startSpeaking(text, currentLanguage);
-    if (!result.success) {
-      setError(t(result.error));
+    try {
+      speak(text);
+      setError('');
+    } catch (err) {
+      setError(err.message);
     }
   };
 
-  // Resume reading from where user left off
-  const handleResumeReading = () => {
+  const handleResume = () => {
+    try {
+      resume();
+      setShowResumeCard(false);
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleStop = () => {
+    stop();
     setShowResumeCard(false);
-    handleResume();
   };
 
-  // Dismiss paused reading session
-  const handleDismissReading = () => {
+  const handleDismissResume = () => {
     setShowResumeCard(false);
-    dismissPausedReading();
-    setText(''); // Clear local text as well
+    stop();
+    setText('');
   };
-
-
 
   return (
     <div className="container">
       <Header />
-      <main className="tts-card" role="main" itemScope itemType="https://schema.org/WebApplication">
+      <main className="home-page" role="main">
+        
+        {/* Resume Reading Card - Simplified */}
+        {showResumeCard && canResume && (
+          <div className="resume-card">
+            <div className="resume-content">
+              <h3>📖 Kaldığınız Yerden Devam Edin</h3>
+              <p className="resume-preview">
+                {currentText.substring(0, 100)}
+                {currentText.length > 100 ? '...' : ''}
+              </p>
+              <div className="resume-actions">
+                <button 
+                  className="btn-resume" 
+                  onClick={handleResume}
+                  aria-label="Kaldığınız yerden devam edin"
+                >
+                  ▶️ Devam Et
+                </button>
+                <button 
+                  className="btn-dismiss" 
+                  onClick={handleDismissResume}
+                  aria-label="Duraklatılan okumayı iptal et"
+                >
+                  ❌ Kapat
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
-        <ResumeReading
-          show={showResumeCard}
-          currentText={currentText}
-          currentSentenceIndex={currentSentenceIndex}
-          totalSentences={sentences.length}
-          currentSentence={currentSentence}
-          onResume={handleResumeReading}
-          onDismiss={handleDismissReading}
-        />
+        {/* Text Input Section */}
+        <div className="text-input-section">
+          <div className="input-header">
+            <label htmlFor="text-input" className="input-label">
+              📝 Metninizi buraya yazın veya yapıştırın
+            </label>
+            <div className="char-counter">
+              {text.length} / {MAX_CHARS}
+            </div>
+          </div>
+          
+          <textarea
+            id="text-input"
+            value={text}
+            onChange={handleTextChange}
+            placeholder="Seslendirilecek metni buraya yazın..."
+            maxLength={MAX_CHARS}
+            rows={8}
+            className="text-area"
+            aria-describedby={error ? "error-message" : undefined}
+          />
+          
+          {error && (
+            <div id="error-message" className="error-message" role="alert">
+              ⚠️ {error}
+            </div>
+          )}
+        </div>
 
-        <TextInput
-          text={text}
-          onChange={handleChange}
-          error={error}
-          selectedVoice={selectedVoice}
-          speechRate={speechRate}
-          voices={voices}
-          onVoiceSelect={handleVoiceSelect}
-          onSpeedChange={handleSpeedChange}
-        />
+        {/* Controls Section */}
+        <div className="controls-section">
+          
+          {/* Voice and Speed Controls */}
+          <div className="settings-row">
+            <div className="voice-control">
+              <label htmlFor="voice-select" className="control-label">
+                🎤 Ses Seçimi
+              </label>
+              <select
+                id="voice-select"
+                value={selectedVoice?.name || ''}
+                onChange={(e) => {
+                  const voice = voices.find(v => v.name === e.target.value);
+                  if (voice) selectVoice(voice);
+                }}
+                className="control-select"
+              >
+                <option value="">Varsayılan Ses</option>
+                {voices.map((voice, index) => (
+                  <option key={index} value={voice.name}>
+                    {voice.name} ({voice.lang})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        <ProgressBar
-          currentSentenceIndex={currentSentenceIndex}
-          totalSentences={sentences.length}
-          isSpeaking={isSpeaking}
-          isPaused={isPaused}
-          speechRate={speechRate}
-          totalWords={totalWords}
-          startTime={startTime}
-          show={isSpeaking || isPaused}
-        />
+            <div className="speed-control">
+              <label htmlFor="speed-select" className="control-label">
+                ⚡ Hız: {speechRate}x
+              </label>
+              <select
+                id="speed-select"
+                value={speechRate}
+                onChange={(e) => changeRate(parseFloat(e.target.value))}
+                className="control-select"
+              >
+                <option value={0.5}>0.5x - Çok Yavaş</option>
+                <option value={0.75}>0.75x - Yavaş</option>
+                <option value={1.0}>1.0x - Normal</option>
+                <option value={1.25}>1.25x - Hızlı</option>
+                <option value={1.5}>1.5x - Çok Hızlı</option>
+                <option value={1.75}>1.75x - Ultra Hızlı</option>
+                <option value={2.0}>2.0x - Maksimum</option>
+              </select>
+            </div>
+          </div>
 
-        <CurrentReading
-          currentSentence={currentSentence}
-          currentWord={currentWord}
-          wordStart={wordStart}
-          wordEnd={wordEnd}
-          currentSentenceIndex={currentSentenceIndex}
-          totalSentences={sentences.length}
-        />
+          {/* Progress Bar - Simplified */}
+          {(isSpeaking || isPaused) && (
+            <div className="progress-section">
+              <div className="progress-info">
+                <span className="progress-text">
+                  {isPaused ? '⏸️ Duraklatıldı' : '🔊 Okunuyor...'}
+                </span>
+                <span className="progress-percent">{Math.round(progress)}%</span>
+              </div>
+              <div className="progress-bar">
+                <div 
+                  className="progress-fill" 
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
 
-        <AudioControls
-          isSpeaking={isSpeaking}
-          isPaused={isPaused}
-          onSpeak={handleSpeak}
-          onPause={handlePause}
-          onResume={handleResume}
-          onStop={handleStop}
-        />
+          {/* Audio Controls */}
+          <AudioControls
+            isSpeaking={isSpeaking}
+            isPaused={isPaused}
+            onSpeak={handleSpeak}
+            onPause={pause}
+            onResume={handleResume}
+            onStop={handleStop}
+          />
+        </div>
+
       </main>
     </div>
   );
