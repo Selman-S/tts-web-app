@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
@@ -9,8 +9,8 @@ import { MAX_CHARS } from '../constants';
 import './HomePage.css';
 
 /**
- * Simplified Home Page with reliable TTS functionality
- * Focuses on core features that work consistently on mobile browsers
+ * Enhanced Home Page with smart features 🚀
+ * Auto-save, statistics, visual feedback, improved mobile experience
  */
 const HomePage = () => {
   const navigate = useNavigate();
@@ -18,47 +18,94 @@ const HomePage = () => {
   const { currentLanguage } = useLanguage();
   const { t } = useTranslation(currentLanguage);
   
-  // Speech synthesis hook
+  // Enhanced speech synthesis hook
   const {
+    // Core state
     isSpeaking,
     isPaused,
     currentText,
     speechRate,
     selectedVoice,
     voices,
+    
+    // Enhanced features
     progress,
+    elapsedTime,
+    estimatedTime,
+    isLoading,
+    lastError,
+    readingStats,
+    processedText,
+    
+    // Actions
     speak,
     pause,
     resume,
     stop,
     selectVoice,
     changeRate,
+    autoSave,
+    
+    // Session management
     loadPausedSession,
-    canResume
+    loadAutoSavedText,
+    
+    // Computed
+    canResume,
+    isReady,
+    clearError
   } = useSpeechSynthesis();
   
   // Local UI state
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [showResumeCard, setShowResumeCard] = useState(false);
+  const [showAutoSaveHint, setShowAutoSaveHint] = useState(false);
+  const [showTextStats, setShowTextStats] = useState(false);
 
-  // Load text from history if passed via navigation
+  // Debounced auto-save on text change
+  const handleTextChange = useCallback((e) => {
+    const newText = e.target.value;
+    if (newText.length <= MAX_CHARS) {
+      setText(newText);
+      setError('');
+      
+      // Trigger auto-save
+      autoSave(newText);
+      
+      // Show auto-save hint briefly
+      if (newText.length > 10) {
+        setShowAutoSaveHint(true);
+        setTimeout(() => setShowAutoSaveHint(false), 2000);
+      }
+    }
+  }, [autoSave]);
+
+  // Load text from history/navigation
   useEffect(() => {
     if (location.state && location.state.text) {
       setText(location.state.text);
-      // Clear the state to prevent reloading on refresh
       navigate('/', { replace: true });
     }
   }, [location.state, navigate]);
 
-  // Check for paused session on mount
+  // Check for paused session and auto-saved text on mount
   useEffect(() => {
     const session = loadPausedSession();
     if (session.hasSession) {
       setText(session.text);
       setShowResumeCard(true);
+      return;
     }
-  }, [loadPausedSession]);
+
+    // Check for auto-saved text
+    const autoSaved = loadAutoSavedText();
+    if (autoSaved && !text) {
+      setText(autoSaved.text);
+      setShowAutoSaveHint(true);
+      setTimeout(() => setShowAutoSaveHint(false), 4000);
+    }
+  }, [loadPausedSession, loadAutoSavedText, text]);
 
   // Hide resume card when speaking starts
   useEffect(() => {
@@ -67,24 +114,28 @@ const HomePage = () => {
     }
   }, [isSpeaking]);
 
-  // Event handlers
-  const handleTextChange = (e) => {
-    if (e.target.value.length <= MAX_CHARS) {
-      setText(e.target.value);
-      setError('');
+  // Sync errors
+  useEffect(() => {
+    if (lastError) {
+      setError(lastError.message);
+      setTimeout(() => {
+        clearError();
+        setError('');
+      }, 5000);
     }
-  };
+  }, [lastError, clearError]);
 
-  const handleSpeak = () => {
+  // Event handlers
+  const handleSpeak = useCallback(() => {
     try {
       speak(text);
       setError('');
     } catch (err) {
       setError(err.message);
     }
-  };
+  }, [speak, text]);
 
-  const handleResume = () => {
+  const handleResume = useCallback(() => {
     try {
       resume();
       setShowResumeCard(false);
@@ -92,17 +143,42 @@ const HomePage = () => {
     } catch (err) {
       setError(err.message);
     }
-  };
+  }, [resume]);
 
-  const handleStop = () => {
+  const handleStop = useCallback(() => {
     stop();
     setShowResumeCard(false);
-  };
+  }, [stop]);
 
-  const handleDismissResume = () => {
+  const handleDismissResume = useCallback(() => {
     setShowResumeCard(false);
     stop();
     setText('');
+  }, [stop]);
+
+  // Quick actions
+  const handleClearText = useCallback(() => {
+    setText('');
+    setError('');
+  }, []);
+
+  const handleTextStats = useCallback(() => {
+    setShowTextStats(!showTextStats);
+  }, [showTextStats]);
+
+  // Format time helper
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Get character limit status
+  const getCharLimitStatus = () => {
+    const percentage = (text.length / MAX_CHARS) * 100;
+    if (percentage > 90) return 'danger';
+    if (percentage > 75) return 'warning';
+    return 'normal';
   };
 
   return (
@@ -110,27 +186,43 @@ const HomePage = () => {
       <Header />
       <main className="home-page" role="main">
         
-        {/* Resume Reading Card - Simplified */}
+        {/* Auto-save indicator */}
+        {showAutoSaveHint && (
+          <div className="auto-save-hint">
+            💾 Metin otomatik kaydedildi
+          </div>
+        )}
+
+        {/* Resume Reading Card - Enhanced */}
         {showResumeCard && canResume && (
-          <div className="resume-card">
+          <div className="resume-card enhanced">
             <div className="resume-content">
-              <h3>📖 Kaldığınız Yerden Devam Edin</h3>
+              <div className="resume-header">
+                <h3>📖 Kaldığınız Yerden Devam Edin</h3>
+                <div className="resume-stats">
+                  {processedText && (
+                    <>
+                      <span>{processedText.wordCount} kelime</span>
+                      <span>~{Math.round(processedText.estimatedSeconds / 60)} dk</span>
+                    </>
+                  )}
+                </div>
+              </div>
               <p className="resume-preview">
-                {currentText.substring(0, 100)}
-                {currentText.length > 100 ? '...' : ''}
+                {currentText.substring(0, 120)}
+                {currentText.length > 120 ? '...' : ''}
               </p>
               <div className="resume-actions">
                 <button 
                   className="btn-resume" 
                   onClick={handleResume}
-                  aria-label="Kaldığınız yerden devam edin"
+                  disabled={isLoading}
                 >
-                  ▶️ Devam Et
+                  {isLoading ? '🔄' : '▶️'} Devam Et
                 </button>
                 <button 
                   className="btn-dismiss" 
                   onClick={handleDismissResume}
-                  aria-label="Duraklatılan okumayı iptal et"
                 >
                   ❌ Kapat
                 </button>
@@ -139,43 +231,97 @@ const HomePage = () => {
           </div>
         )}
 
-        {/* Text Input Section */}
-        <div className="text-input-section">
+        {/* Text Input Section - Enhanced */}
+        <div className="text-input-section enhanced">
           <div className="input-header">
-            <label htmlFor="text-input" className="input-label">
-              📝 Metninizi buraya yazın veya yapıştırın
-            </label>
-            <div className="char-counter">
-              {text.length} / {MAX_CHARS}
+            <div className="input-label-group">
+              <label htmlFor="text-input" className="input-label">
+                📝 Metninizi buraya yazın veya yapıştırın
+              </label>
+              {text.length > 20 && (
+                <button 
+                  className="stats-toggle"
+                  onClick={handleTextStats}
+                  title="Metin istatistikleri"
+                >
+                  📊
+                </button>
+              )}
+            </div>
+            <div className="input-meta">
+              <div className={`char-counter ${getCharLimitStatus()}`}>
+                {text.length} / {MAX_CHARS}
+              </div>
+              {text.length > 0 && (
+                <button 
+                  className="clear-btn"
+                  onClick={handleClearText}
+                  title="Metni temizle"
+                >
+                  🗑️
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Text statistics */}
+          {showTextStats && processedText && (
+            <div className="text-stats">
+              <div className="stat-item">
+                <span className="stat-label">Kelime:</span>
+                <span className="stat-value">{processedText.wordCount}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Karakter:</span>
+                <span className="stat-value">{processedText.charCount}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Tahmini süre:</span>
+                <span className="stat-value">{formatTime(processedText.estimatedSeconds)}</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-label">Hız ile:</span>
+                <span className="stat-value">{formatTime(processedText.estimatedSeconds / speechRate)}</span>
+              </div>
+            </div>
+          )}
           
           <textarea
             id="text-input"
             value={text}
             onChange={handleTextChange}
-            placeholder="Seslendirilecek metni buraya yazın..."
+            placeholder="🎯 İpucu: Metniniz yazarken otomatik kaydedilir..."
             maxLength={MAX_CHARS}
             rows={8}
-            className="text-area"
+            className="text-area enhanced"
             aria-describedby={error ? "error-message" : undefined}
+            disabled={isLoading}
           />
           
           {error && (
-            <div id="error-message" className="error-message" role="alert">
-              ⚠️ {error}
+            <div id="error-message" className="error-message enhanced" role="alert">
+              <span className="error-icon">⚠️</span>
+              <span className="error-text">{error}</span>
+              <button 
+                className="error-close"
+                onClick={() => setError('')}
+                aria-label="Hatayı kapat"
+              >
+                ✕
+              </button>
             </div>
           )}
         </div>
 
-        {/* Controls Section */}
-        <div className="controls-section">
+        {/* Controls Section - Enhanced */}
+        <div className="controls-section enhanced">
           
           {/* Voice and Speed Controls */}
           <div className="settings-row">
             <div className="voice-control">
               <label htmlFor="voice-select" className="control-label">
                 🎤 Ses Seçimi
+                {!isReady && <span className="loading-dot">⏳</span>}
               </label>
               <select
                 id="voice-select"
@@ -185,6 +331,7 @@ const HomePage = () => {
                   if (voice) selectVoice(voice);
                 }}
                 className="control-select"
+                disabled={isLoading}
               >
                 <option value="">Varsayılan Ses</option>
                 {voices.map((voice, index) => (
@@ -198,12 +345,18 @@ const HomePage = () => {
             <div className="speed-control">
               <label htmlFor="speed-select" className="control-label">
                 ⚡ Hız: {speechRate}x
+                {processedText && (
+                  <span className="time-estimate">
+                    ~{formatTime(processedText.estimatedSeconds / speechRate)}
+                  </span>
+                )}
               </label>
               <select
                 id="speed-select"
                 value={speechRate}
                 onChange={(e) => changeRate(parseFloat(e.target.value))}
                 className="control-select"
+                disabled={isLoading}
               >
                 <option value={0.5}>0.5x - Çok Yavaş</option>
                 <option value={0.75}>0.75x - Yavaş</option>
@@ -216,25 +369,71 @@ const HomePage = () => {
             </div>
           </div>
 
-          {/* Progress Bar - Simplified */}
+          {/* Enhanced Progress Section */}
           {(isSpeaking || isPaused) && (
-            <div className="progress-section">
-              <div className="progress-info">
-                <span className="progress-text">
-                  {isPaused ? '⏸️ Duraklatıldı' : '🔊 Okunuyor...'}
-                </span>
-                <span className="progress-percent">{Math.round(progress)}%</span>
+            <div className="progress-section enhanced">
+              <div className="progress-header">
+                <div className="progress-status">
+                  <span className="status-icon">
+                    {isLoading ? '🔄' : isPaused ? '⏸️' : '🔊'}
+                  </span>
+                  <span className="status-text">
+                    {isLoading ? 'Hazırlanıyor...' : isPaused ? 'Duraklatıldı' : 'Okunuyor...'}
+                  </span>
+                </div>
+                <div className="progress-stats">
+                  <span className="progress-percent">{Math.round(progress)}%</span>
+                  {readingStats.wordsPerMinute > 0 && (
+                    <span className="wpm">{readingStats.wordsPerMinute} WPM</span>
+                  )}
+                </div>
               </div>
-              <div className="progress-bar">
+              
+              <div className="progress-bar enhanced">
                 <div 
                   className="progress-fill" 
-                  style={{ width: `${progress}%` }}
+                  style={{ 
+                    width: `${progress}%`,
+                    background: isPaused ? '#f59e0b' : 'linear-gradient(90deg, #667eea, #764ba2)'
+                  }}
                 ></div>
+              </div>
+              
+              <div className="progress-time">
+                <span className="time-elapsed">
+                  📍 {formatTime(elapsedTime)}
+                </span>
+                {estimatedTime > 0 && (
+                  <span className="time-remaining">
+                    ⏱️ {formatTime(estimatedTime)} kaldı
+                  </span>
+                )}
               </div>
             </div>
           )}
 
-          {/* Audio Controls */}
+          {/* Reading Statistics */}
+          {readingStats.totalReadTime > 0 && (
+            <div className="reading-stats">
+              <h4>📊 Okuma İstatistikleri</h4>
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <span className="stat-number">{readingStats.sessionsCompleted}</span>
+                  <span className="stat-label">Tamamlanan</span>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-number">{formatTime(readingStats.totalReadTime)}</span>
+                  <span className="stat-label">Toplam Süre</span>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-number">{readingStats.wordsPerMinute}</span>
+                  <span className="stat-label">WPM</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Enhanced Audio Controls */}
           <AudioControls
             isSpeaking={isSpeaking}
             isPaused={isPaused}
@@ -242,6 +441,9 @@ const HomePage = () => {
             onPause={pause}
             onResume={handleResume}
             onStop={handleStop}
+            disabled={isLoading || !isReady}
+            isLoading={isLoading}
+            textLength={text.trim().length}
           />
         </div>
 
