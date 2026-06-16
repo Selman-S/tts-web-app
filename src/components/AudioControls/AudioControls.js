@@ -5,8 +5,7 @@ import { FaPlay, FaPause, FaStop, FaSpinner } from 'react-icons/fa';
 import './AudioControls.css';
 
 /**
- * Enhanced Audio Controls component 🎮
- * Features: Loading states, visual feedback, better accessibility
+ * Audio playback controls with loading and accessibility states
  */
 const AudioControls = ({
   isSpeaking,
@@ -17,36 +16,33 @@ const AudioControls = ({
   onStop,
   disabled = false,
   isLoading = false,
-  textLength = 0
+  textLength = 0,
+  estimatedMinutes = 0
 }) => {
   const { currentLanguage } = useLanguage();
   const { t } = useTranslation(currentLanguage);
 
-  // Determine button states
   const speakDisabled = disabled || isLoading || textLength === 0;
   const controlsDisabled = disabled || isLoading;
 
-  // Get speak button content based on state
   const getSpeakButtonContent = () => {
     if (isLoading) {
       return {
         icon: <FaSpinner className="btn-icon spinning" aria-hidden="true" />,
-        text: 'Hazırlanıyor...',
+        text: t('common.preparing'),
         className: 'control-btn primary loading'
       };
     }
-    
     if (speakDisabled) {
       return {
         icon: <FaPlay className="btn-icon" aria-hidden="true" />,
-        text: textLength === 0 ? 'Metin girin' : 'Seslendir',
+        text: textLength === 0 ? t('common.enterTextFirst') : t('audioControls.speak'),
         className: 'control-btn primary disabled'
       };
     }
-
     return {
       icon: <FaPlay className="btn-icon" aria-hidden="true" />,
-      text: 'Seslendir',
+      text: t('audioControls.speak'),
       className: 'control-btn primary'
     };
   };
@@ -54,86 +50,79 @@ const AudioControls = ({
   const speakButton = getSpeakButtonContent();
 
   return (
-    <section className="audio-controls enhanced" aria-label="Ses Kontrolleri">
+    <section className="audio-controls enhanced" aria-label={t('audioControls.speak')}>
       <div className="primary-controls">
         {!isSpeaking ? (
-          <button 
+          <button
             className={speakButton.className}
             onClick={onSpeak}
             disabled={speakDisabled}
-            aria-label={isLoading ? 'Hazırlanıyor' : 'Metni seslendir'}
+            aria-label={isLoading ? t('common.preparing') : t('audioControls.speakAriaLabel')}
             type="button"
-            title={textLength === 0 ? 'Önce bir metin yazın' : 'Metni sesli okumaya başla'}
+            title={textLength === 0 ? t('home.writeFirst') : t('home.speakTitle')}
           >
             {speakButton.icon}
             <span className="btn-text">{speakButton.text}</span>
-            {textLength > 0 && !isLoading && (
-              <span className="btn-hint">({Math.round(textLength / 200)} dk)</span>
+            {textLength > 0 && !isLoading && estimatedMinutes > 0 && (
+              <span className="btn-hint">({estimatedMinutes} {t('common.minutes')})</span>
             )}
           </button>
         ) : (
-          <div className="control-group enhanced" role="group" aria-label="Oynatma kontrolleri">
+          <div className="control-group enhanced" role="group" aria-label={t('audioControls.speak')}>
             {isPaused ? (
-              <button 
-                className="control-btn success" 
+              <button
+                className="control-btn success"
                 onClick={onResume}
                 disabled={controlsDisabled}
-                aria-label="Okumaya devam et"
+                aria-label={t('audioControls.resumeAriaLabel')}
                 type="button"
-                title="Kaldığınız yerden devam edin"
               >
                 <FaPlay className="btn-icon" aria-hidden="true" />
-                <span className="btn-text">Devam Et</span>
+                <span className="btn-text">{t('audioControls.resume')}</span>
               </button>
             ) : (
-              <button 
-                className="control-btn warning" 
+              <button
+                className="control-btn warning"
                 onClick={onPause}
                 disabled={controlsDisabled}
-                aria-label="Okumayı duraklat"
+                aria-label={t('audioControls.pauseAriaLabel')}
                 type="button"
-                title="Okumayı geçici olarak duraklat"
               >
                 <FaPause className="btn-icon" aria-hidden="true" />
-                <span className="btn-text">Duraklat</span>
+                <span className="btn-text">{t('audioControls.pause')}</span>
               </button>
             )}
-            <button 
-              className="control-btn danger" 
+            <button
+              className="control-btn danger"
               onClick={onStop}
               disabled={controlsDisabled}
-              aria-label="Okumayı durdur"
+              aria-label={t('audioControls.stopAriaLabel')}
               type="button"
-              title="Okumayı tamamen durdur"
             >
               <FaStop className="btn-icon" aria-hidden="true" />
-              <span className="btn-text">Durdur</span>
+              <span className="btn-text">{t('audioControls.stop')}</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* Status indicator */}
       {(isSpeaking || isPaused || isLoading) && (
         <div className="status-indicator">
-          <div className={`status-dot ${isLoading ? 'loading' : isPaused ? 'paused' : 'speaking'}`}></div>
+          <div className={`status-dot ${isLoading ? 'loading' : isPaused ? 'paused' : 'speaking'}`} />
           <span className="status-text">
-            {isLoading ? 'Hazırlanıyor...' : isPaused ? 'Duraklatıldı' : 'Okunuyor...'}
+            {isLoading ? t('common.preparing') : isPaused ? t('home.statusPaused') : t('home.statusSpeaking')}
           </span>
         </div>
       )}
 
-      {/* Quick tips */}
       {!isSpeaking && !isLoading && textLength > 0 && (
         <div className="quick-tips">
           <span className="tip-icon">💡</span>
-          <span className="tip-text">
-            İpucu: Metin okurken diğer sekmelere geçebilirsiniz
-          </span>
+          <span className="tip-text">{t('home.tip')}</span>
         </div>
       )}
     </section>
   );
 };
 
-export default AudioControls; 
+export default AudioControls;

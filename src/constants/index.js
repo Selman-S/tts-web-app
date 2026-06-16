@@ -31,5 +31,12 @@ export const STORAGE_KEYS = {
   HISTORY: 'tts-history',
   SPEECH_RATE: 'tts-speech-rate',
   THEME: 'tts-theme',
-  CURRENT_PROGRESS: 'tts-current-progress'
+  SELECTED_VOICE: 'tts-selected-voice',
+  CURRENT_TEXT: 'tts-current-text',
+  SESSION_TIMESTAMP: 'tts-session-timestamp',
+  PAUSED_ELAPSED: 'tts-paused-time',
+  SENTENCE_INDEX: 'tts-sentence-index',
+  AUTO_SAVED_TEXT: 'tts-auto-saved-text',
+  AUTO_SAVE_TIMESTAMP: 'tts-auto-save-timestamp',
+  READING_STATS: 'tts-reading-stats'
 }; 

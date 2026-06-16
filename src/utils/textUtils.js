@@ -30,6 +30,29 @@ export const splitIntoSentences = (text) => {
 };
 
 /**
+ * Analyze text for stats and TTS estimates
+ * @param {string} text - Input text
+ * @param {number} speechRate - Playback rate multiplier
+ * @returns {object|null} Analysis result
+ */
+export const analyzeText = (text, speechRate = 1) => {
+  if (!text || typeof text !== 'string') return null;
+
+  const cleaned = text.replace(/\s+/g, ' ').trim();
+  if (!cleaned) return null;
+
+  const wordCount = cleaned.split(/\s+/).filter((w) => w.length > 0).length;
+  const estimatedMinutes = wordCount / (200 * speechRate);
+
+  return {
+    text: cleaned,
+    wordCount,
+    charCount: cleaned.length,
+    estimatedSeconds: Math.round(estimatedMinutes * 60)
+  };
+};
+
+/**
  * Get word count from text
  * @param {string} text - The input text
  * @returns {number} Number of words

@@ -16,8 +16,13 @@ export const useHistory = () => {
 
   // Load history from localStorage on mount
   useEffect(() => {
-    const savedHistory = loadFromStorage(STORAGE_KEYS.HISTORY, []);
-    setHistory(savedHistory);
+    const load = () => {
+      const savedHistory = loadFromStorage(STORAGE_KEYS.HISTORY, []);
+      setHistory(savedHistory);
+    };
+    load();
+    window.addEventListener('tts-history-changed', load);
+    return () => window.removeEventListener('tts-history-changed', load);
   }, []);
 
   // Save history to localStorage whenever it changes

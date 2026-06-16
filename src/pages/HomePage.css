@@ -1,7 +1,7 @@
 .home-page {
   max-width: 900px;
   margin: 0 auto;
-  padding: 20px 20px 100px 20px; /* Added bottom padding for mobile navigation */
+  padding: 20px 20px 120px 20px; /* Extra bottom padding so nav does not cover controls */
   min-height: calc(100vh - 140px);
   position: relative;
 }

@@ -1,512 +1,212 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { MAX_HISTORY, STORAGE_KEYS } from '../constants';
+import { splitIntoSentences, analyzeText } from '../utils/textUtils';
 
 /**
- * Enhanced Speech Synthesis Hook 🚀
- * Features: Smart text processing, auto-save, statistics, performance optimization
+ * Speech synthesis hook with sentence navigation and word highlighting
  */
 export const useSpeechSynthesis = () => {
-  // Core state
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [currentText, setCurrentText] = useState('');
   const [speechRate, setSpeechRate] = useState(1.0);
   const [selectedVoice, setSelectedVoice] = useState(null);
   const [voices, setVoices] = useState([]);
-  
-  // Enhanced progress & stats
+
   const [progress, setProgress] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [estimatedTime, setEstimatedTime] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [lastError, setLastError] = useState(null);
-  
-  // Reading statistics
+
   const [readingStats, setReadingStats] = useState({
     wordsPerMinute: 0,
     totalReadTime: 0,
     sessionsCompleted: 0
   });
-  
-  // Refs for performance
+
+  // Sentence & word tracking for navigation/highlight
+  const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
+  const [totalSentences, setTotalSentences] = useState(0);
+  const [currentSentence, setCurrentSentence] = useState('');
+  const [currentWord, setCurrentWord] = useState('');
+  const [wordStart, setWordStart] = useState(0);
+  const [wordEnd, setWordEnd] = useState(0);
+
   const utteranceRef = useRef(null);
   const isPlayingRef = useRef(false);
   const startTimeRef = useRef(null);
   const pausedTimeRef = useRef(0);
   const progressIntervalRef = useRef(null);
   const autoSaveTimeoutRef = useRef(null);
-  
-  // Smart text processing with memoization
-  const processedText = useMemo(() => {
-    if (!currentText) return null;
-    
-    // Clean text for better TTS experience
-    const cleaned = currentText
-      .replace(/\s+/g, ' ')
-      .replace(/([.!?])\s*([A-Z])/g, '$1 $2')
-      .replace(/(\d+)/g, ' $1 ')
-      .trim();
-    
-    const wordCount = cleaned.split(/\s+/).filter(w => w.length > 0).length;
-    const estimatedMinutes = wordCount / (200 * speechRate);
-    
-    return {
-      text: cleaned,
-      wordCount,
-      charCount: cleaned.length,
-      estimatedSeconds: Math.round(estimatedMinutes * 60)
-    };
-  }, [currentText, speechRate]);
+  const sentencesRef = useRef([]);
+  const sentenceIndexRef = useRef(0);
+  const speakSentenceAtRef = useRef(null);
 
-  // Enhanced voice loading and filtering
+  const processedText = analyzeText(currentText, speechRate);
+
+  // Load voices on mount
   useEffect(() => {
     const loadVoices = () => {
       const availableVoices = window.speechSynthesis.getVoices();
-      
-      // Smart voice filtering and sorting
       const filteredVoices = availableVoices
-        .filter(voice => !voice.name.includes('Google') || voice.lang.includes('tr'))
+        .filter((voice) => !voice.name.includes('Google') || voice.lang.includes('tr'))
         .sort((a, b) => {
           if (a.lang.includes('tr') && !b.lang.includes('tr')) return -1;
           if (!a.lang.includes('tr') && b.lang.includes('tr')) return 1;
           return a.name.localeCompare(b.name);
         });
-      
+
       setVoices(filteredVoices);
-      
-      // Auto-select best Turkish voice
-      if (!selectedVoice && filteredVoices.length > 0) {
-        const bestVoice = filteredVoices.find(v => 
-          v.lang.includes('tr') && !v.name.includes('Google')
-        ) || filteredVoices.find(v => v.lang.includes('tr')) || filteredVoices[0];
-        
-        setSelectedVoice(bestVoice);
-      }
     };
 
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
-  }, [selectedVoice]);
+  }, []);
 
-  // Load settings and stats
-  useEffect(() => {
-    const loadSettings = () => {
-      try {
-        // Load speech rate
-        const savedRate = localStorage.getItem('tts-speech-rate');
-        if (savedRate) setSpeechRate(parseFloat(savedRate));
+  // Apply saved voice/rate when voices are ready
+  const applySavedSettings = useCallback(() => {
+    try {
+      const savedRate = localStorage.getItem(STORAGE_KEYS.SPEECH_RATE);
+      if (savedRate) setSpeechRate(parseFloat(savedRate));
 
-        // Load selected voice
-        const savedVoice = localStorage.getItem('tts-selected-voice');
-        if (savedVoice && voices.length > 0) {
-          const voiceData = JSON.parse(savedVoice);
-          const voice = voices.find(v => v.name === voiceData.name);
-          if (voice) setSelectedVoice(voice);
-        }
-
-        // Load reading statistics
-        const savedStats = localStorage.getItem('tts-reading-stats');
-        if (savedStats) setReadingStats(JSON.parse(savedStats));
-      } catch (error) {
-        console.error('Settings load error:', error);
+      const savedVoice = localStorage.getItem(STORAGE_KEYS.SELECTED_VOICE);
+      if (savedVoice && voices.length > 0) {
+        const voiceData = JSON.parse(savedVoice);
+        const voice = voices.find((v) => v.name === voiceData.name);
+        if (voice) setSelectedVoice(voice);
       }
-    };
 
-    if (voices.length > 0) loadSettings();
+      const savedStats = localStorage.getItem(STORAGE_KEYS.READING_STATS);
+      if (savedStats) setReadingStats(JSON.parse(savedStats));
+    } catch (error) {
+      console.error('Settings load error:', error);
+    }
   }, [voices]);
 
-  // Enhanced visibility handling for mobile browsers
+  useEffect(() => {
+    if (voices.length > 0) applySavedSettings();
+  }, [voices, applySavedSettings]);
+
+  // Sync settings when changed from Settings page (same tab)
+  useEffect(() => {
+    const handleSettingsChange = () => applySavedSettings();
+    window.addEventListener('tts-settings-changed', handleSettingsChange);
+    return () => window.removeEventListener('tts-settings-changed', handleSettingsChange);
+  }, [applySavedSettings]);
+
+  // Save session state for resume card
+  const saveSession = useCallback((text, sentenceIndex, elapsedMs) => {
+    localStorage.setItem(STORAGE_KEYS.CURRENT_TEXT, text);
+    localStorage.setItem(STORAGE_KEYS.SESSION_TIMESTAMP, Date.now().toString());
+    localStorage.setItem(STORAGE_KEYS.PAUSED_ELAPSED, elapsedMs.toString());
+    localStorage.setItem(STORAGE_KEYS.SENTENCE_INDEX, sentenceIndex.toString());
+  }, []);
+
+  const clearSession = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_TEXT);
+    localStorage.removeItem(STORAGE_KEYS.SESSION_TIMESTAMP);
+    localStorage.removeItem(STORAGE_KEYS.PAUSED_ELAPSED);
+    localStorage.removeItem(STORAGE_KEYS.SENTENCE_INDEX);
+  }, []);
+
+  // Visibility handling for mobile tab switches
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.hidden) {
-        // Page hidden - speech may be interrupted on mobile
-        if (isSpeaking && !isPaused) {
-          console.log('Page hidden while speaking - preparing for potential interruption');
-          // Save current state in case speech gets interrupted
-          const elapsed = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
-          pausedTimeRef.current = elapsed;
-          localStorage.setItem('tts-paused-time', elapsed.toString());
-        }
-      } else {
-        // Page visible again
-        console.log('Page visible again');
-        
-        // Check if speech synthesis was interrupted while hidden
-        if (isSpeaking && window.speechSynthesis && !window.speechSynthesis.speaking) {
-          console.log('Speech was interrupted while page was hidden');
-          // Mark as paused so user can resume
-          setIsSpeaking(false);
-          setIsPaused(true);
-          isPlayingRef.current = false;
-        }
-      }
-    };
-
-    // Handle browser focus/blur events for better mobile compatibility
-    const handleFocus = () => {
-      console.log('Window focused');
-    };
-
-    const handleBlur = () => {
-      console.log('Window blurred');
-      // On mobile, speech often stops when window loses focus
-      if (isSpeaking && currentText) {
+      if (document.hidden && isSpeaking && !isPaused) {
         const elapsed = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
         pausedTimeRef.current = elapsed;
-        localStorage.setItem('tts-paused-time', elapsed.toString());
+        saveSession(currentText, sentenceIndexRef.current, elapsed);
+      } else if (!document.hidden && isSpeaking && window.speechSynthesis && !window.speechSynthesis.speaking) {
+        setIsSpeaking(false);
+        setIsPaused(true);
+        isPlayingRef.current = false;
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('blur', handleBlur);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('blur', handleBlur);
-    };
-  }, [isSpeaking, isPaused, currentText]);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isSpeaking, isPaused, currentText, saveSession]);
 
-  // Auto-save functionality with debouncing
   const autoSave = useCallback((text) => {
     if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
-    
     autoSaveTimeoutRef.current = setTimeout(() => {
       if (text && text.trim().length > 10) {
-        localStorage.setItem('tts-auto-saved-text', text);
-        localStorage.setItem('tts-auto-save-timestamp', Date.now().toString());
+        localStorage.setItem(STORAGE_KEYS.AUTO_SAVED_TEXT, text);
+        localStorage.setItem(STORAGE_KEYS.AUTO_SAVE_TIMESTAMP, Date.now().toString());
       }
     }, 2000);
   }, []);
 
-  // Real-time progress tracking with statistics
   const updateProgress = useCallback(() => {
-    if (!isPlayingRef.current || !startTimeRef.current || !processedText) return;
-    
+    if (!isPlayingRef.current || !startTimeRef.current) return;
+
     const elapsed = (Date.now() - startTimeRef.current + pausedTimeRef.current) / 1000;
-    const progressPercent = Math.min((elapsed / processedText.estimatedSeconds) * 100, 100);
-    
+    const total = sentencesRef.current.length;
+    const sentenceProgress = total > 0 ? (sentenceIndexRef.current + 1) / total : 0;
+    const progressPercent = Math.min(sentenceProgress * 100, 100);
+
     setProgress(progressPercent);
     setElapsedTime(elapsed);
-    setEstimatedTime(Math.max(0, processedText.estimatedSeconds - elapsed));
-    
-    // Calculate real-time WPM
-    if (elapsed > 0) {
-      const wordsRead = (progressPercent / 100) * processedText.wordCount;
-      const currentWPM = Math.round((wordsRead / elapsed) * 60);
-      setReadingStats(prev => ({ ...prev, wordsPerMinute: currentWPM }));
-    }
-  }, [processedText]);
 
-  // Progress interval management
+    const analysis = analyzeText(currentText, speechRate);
+    if (analysis) {
+      setEstimatedTime(Math.max(0, analysis.estimatedSeconds - elapsed));
+      if (elapsed > 0) {
+        const wordsRead = sentenceProgress * analysis.wordCount;
+        setReadingStats((prev) => ({
+          ...prev,
+          wordsPerMinute: Math.round((wordsRead / elapsed) * 60)
+        }));
+      }
+    }
+  }, [currentText, speechRate]);
+
   useEffect(() => {
     if (isSpeaking && !isPaused) {
       progressIntervalRef.current = setInterval(updateProgress, 500);
-    } else {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
-        progressIntervalRef.current = null;
-      }
+    } else if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
     }
-    
     return () => {
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
     };
   }, [isSpeaking, isPaused, updateProgress]);
 
-  // Enhanced error handling with smart filtering
   const handleError = useCallback((error, context) => {
-    console.error(`TTS Error [${context}]:`, error);
-    
-    // Filter out normal/expected errors that shouldn't be shown to user
-    const normalErrors = [
-      'interrupted', // Normal when switching tabs or stopping speech
-      'canceled',    // Normal when canceling speech
-      'not-allowed', // Sometimes occurs on first interaction
-      'synthesis-failed', // Temporary browser issues
-      'synthesis-unavailable' // Temporary browser issues
-    ];
-    
-    const errorMessage = error.message?.toLowerCase() || '';
-    const isNormalError = normalErrors.some(normalError => 
-      errorMessage.includes(normalError)
-    );
-    
-    // Only show unexpected errors to user
-    if (!isNormalError) {
-      setLastError({ 
-        message: error.message || 'Beklenmeyen bir hata oluştu', 
-        context, 
-        timestamp: Date.now() 
-      });
+    const errorMessage = (error.message || '').toLowerCase();
+    const normalErrors = ['interrupted', 'canceled', 'not-allowed', 'synthesis-failed', 'synthesis-unavailable'];
+    const isNormal = normalErrors.some((e) => errorMessage.includes(e));
+
+    if (!isNormal) {
+      setLastError({ message: error.message || 'Unexpected error', context, timestamp: Date.now() });
     }
-    
-    // Always cleanup state regardless of error type
+
     setIsLoading(false);
-    setIsSpeaking(false);
-    setIsPaused(false);
     isPlayingRef.current = false;
-    
-    // For interrupted error, try to save current position for resume
+
     if (errorMessage.includes('interrupted') && currentText) {
       const elapsed = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
       pausedTimeRef.current = elapsed;
-      localStorage.setItem('tts-paused-time', elapsed.toString());
-      setIsPaused(true); // Mark as paused so user can resume
+      saveSession(currentText, sentenceIndexRef.current, elapsed);
+      setIsPaused(true);
+      setIsSpeaking(true);
+    } else {
+      setIsSpeaking(false);
+      setIsPaused(false);
     }
-  }, [currentText]);
+  }, [currentText, saveSession]);
 
-  // Smart text validation
   const validateText = useCallback((text) => {
-    if (!text || typeof text !== 'string') {
-      throw new Error('Lütfen geçerli bir metin girin.');
-    }
-    
+    if (!text || typeof text !== 'string') throw new Error('Lütfen geçerli bir metin girin.');
     const trimmed = text.trim();
-    if (trimmed.length === 0) throw new Error('Metin boş olamaz.');
+    if (!trimmed) throw new Error('Metin boş olamaz.');
     if (trimmed.length > 50000) throw new Error('Metin çok uzun (max 50.000 karakter).');
     if (trimmed.length < 3) throw new Error('Metin çok kısa (min 3 karakter).');
-    
     return trimmed;
   }, []);
 
-  // Enhanced speak function with stability improvements
-  const speak = useCallback((text) => {
-    try {
-      setIsLoading(true);
-      setLastError(null);
-      
-      // Check browser support
-      if (!('speechSynthesis' in window)) {
-        throw new Error('Tarayıcınız sesli okuma desteklemiyor.');
-      }
-      
-      // Check if speech synthesis is available and not speaking
-      if (window.speechSynthesis.speaking) {
-        console.log('Speech synthesis busy, canceling current speech');
-        window.speechSynthesis.cancel();
-        // Small delay to ensure cleanup
-        setTimeout(() => speak(text), 100);
-        return;
-      }
-      
-      const processedInput = validateText(text);
-      window.speechSynthesis.cancel();
-      
-      const utterance = new SpeechSynthesisUtterance(processedInput);
-      utterance.rate = speechRate;
-      utterance.lang = selectedVoice?.lang || 'tr-TR';
-      utterance.volume = 1;
-      utterance.pitch = 1;
-      
-      if (selectedVoice) utterance.voice = selectedVoice;
-
-      utterance.onstart = () => {
-        setIsLoading(false);
-        setIsSpeaking(true);
-        setIsPaused(false);
-        isPlayingRef.current = true;
-        startTimeRef.current = Date.now();
-        pausedTimeRef.current = 0;
-        setProgress(0);
-        setElapsedTime(0);
-        
-        setCurrentText(processedInput);
-        localStorage.setItem('tts-current-text', processedInput);
-      };
-
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        setIsPaused(false);
-        isPlayingRef.current = false;
-        setProgress(100);
-        
-        // Update statistics
-        const totalTime = (Date.now() - startTimeRef.current) / 1000;
-        setReadingStats(prev => {
-          const newStats = {
-            ...prev,
-            totalReadTime: prev.totalReadTime + totalTime,
-            sessionsCompleted: prev.sessionsCompleted + 1
-          };
-          localStorage.setItem('tts-reading-stats', JSON.stringify(newStats));
-          return newStats;
-        });
-        
-        setCurrentText('');
-        localStorage.removeItem('tts-current-text');
-        addToHistory(processedInput, totalTime);
-      };
-
-      utterance.onerror = (event) => {
-        // Get detailed error information
-        const errorType = event.error || 'unknown';
-        const errorMessage = `Speech synthesis error: ${errorType}`;
-        
-        // Handle different error types appropriately
-        switch (errorType) {
-          case 'interrupted':
-            // Normal interruption - save state for potential resume
-            console.log('Speech interrupted - saving state for resume');
-            handleError(new Error('interrupted'), 'speech');
-            break;
-          case 'canceled':
-            // Normal cancellation - just cleanup
-            console.log('Speech canceled by user or system');
-            handleError(new Error('canceled'), 'speech');
-            break;
-          case 'not-allowed':
-            // Permission issue - show helpful message
-            handleError(new Error('Ses iznine ihtiyaç var. Lütfen tarayıcı ayarlarını kontrol edin.'), 'speech');
-            break;
-          case 'synthesis-failed':
-          case 'synthesis-unavailable':
-            // Temporary browser issues
-            console.log('Synthesis temporarily unavailable, saving for retry');
-            handleError(new Error('Sesli okuma geçici olarak kullanılamıyor. Lütfen tekrar deneyin.'), 'speech');
-            break;
-          default:
-            // Unexpected errors
-            handleError(new Error(errorMessage), 'speech');
-        }
-      };
-
-      utteranceRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
-      
-    } catch (error) {
-      handleError(error, 'speak');
-      throw error;
-    }
-  }, [speechRate, selectedVoice, validateText, handleError]);
-
-  // Enhanced pause/resume/stop functions
-  const pause = useCallback(() => {
-    if (isSpeaking && !isPaused) {
-      try {
-        window.speechSynthesis.pause();
-        setIsPaused(true);
-        isPlayingRef.current = false;
-        pausedTimeRef.current = Date.now() - (startTimeRef.current || Date.now());
-        localStorage.setItem('tts-paused-time', pausedTimeRef.current.toString());
-      } catch (error) {
-        handleError(error, 'pause');
-      }
-    }
-  }, [isSpeaking, isPaused, handleError]);
-
-  const resume = useCallback(() => {
-    if (isPaused && currentText) {
-      try {
-        setLastError(null); // Clear any previous errors
-        
-        // Check if browser's speech synthesis is in paused state
-        if (window.speechSynthesis.paused) {
-          console.log('Resuming paused speech');
-          window.speechSynthesis.resume();
-          setIsPaused(false);
-          isPlayingRef.current = true;
-          startTimeRef.current = Date.now() - pausedTimeRef.current;
-        } else {
-          // Speech was interrupted/canceled, restart from beginning
-          // In the future, we could implement resume from position
-          console.log('Speech was interrupted, restarting from beginning');
-          setIsPaused(false);
-          speak(currentText);
-        }
-      } catch (error) {
-        console.log('Resume failed, attempting restart:', error);
-        handleError(error, 'resume');
-        
-        // Fallback: always try to restart speech
-        try {
-          setIsPaused(false);
-          // Clear any speech synthesis state and restart
-          window.speechSynthesis.cancel();
-          setTimeout(() => {
-            speak(currentText);
-          }, 100);
-        } catch (fallbackError) {
-          handleError(fallbackError, 'resume-fallback');
-        }
-      }
-    } else if (!currentText) {
-      // No text to resume - this shouldn't happen but let's handle it
-      console.warn('Resume called but no current text available');
-      setIsPaused(false);
-      setLastError({ 
-        message: 'Devam edilecek metin bulunamadı', 
-        context: 'resume', 
-        timestamp: Date.now() 
-      });
-    }
-  }, [isPaused, currentText, speak, handleError]);
-
-  const stop = useCallback(() => {
-    try {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-      setIsPaused(false);
-      isPlayingRef.current = false;
-      setProgress(0);
-      setElapsedTime(0);
-      setEstimatedTime(0);
-      setCurrentText('');
-      setLastError(null);
-      
-      localStorage.removeItem('tts-current-text');
-      localStorage.removeItem('tts-paused-time');
-    } catch (error) {
-      handleError(error, 'stop');
-    }
-  }, [handleError]);
-
-  // Session management
-  const loadPausedSession = useCallback(() => {
-    try {
-      const savedText = localStorage.getItem('tts-current-text');
-      const savedTime = localStorage.getItem('tts-paused-time');
-      
-      if (savedText && savedTime) {
-        const timestamp = parseInt(savedTime, 10);
-        // Restore if less than 24 hours old
-        if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
-          setCurrentText(savedText);
-          setIsPaused(true);
-          pausedTimeRef.current = timestamp;
-          return { text: savedText, hasSession: true };
-        } else {
-          localStorage.removeItem('tts-current-text');
-          localStorage.removeItem('tts-paused-time');
-        }
-      }
-    } catch (error) {
-      console.error('Session load error:', error);
-    }
-    
-    return { hasSession: false };
-  }, []);
-
-  const loadAutoSavedText = useCallback(() => {
-    try {
-      const autoSavedText = localStorage.getItem('tts-auto-saved-text');
-      const timestamp = localStorage.getItem('tts-auto-save-timestamp');
-      
-      if (autoSavedText && timestamp) {
-        const saveTime = parseInt(timestamp, 10);
-        // Return if less than 7 days old
-        if (Date.now() - saveTime < 7 * 24 * 60 * 60 * 1000) {
-          return { text: autoSavedText, timestamp: saveTime };
-        }
-      }
-    } catch (error) {
-      console.error('Auto-save load error:', error);
-    }
-    
-    return null;
-  }, []);
-
-  // Enhanced history management
   const addToHistory = useCallback((text, actualReadTime = 0) => {
     try {
       const historyItem = {
@@ -522,36 +222,297 @@ export const useSpeechSynthesis = () => {
         readingRate: speechRate,
         voiceUsed: selectedVoice?.name || 'Default'
       };
-      
-      const savedHistory = localStorage.getItem('tts-history');
-      let history = savedHistory ? JSON.parse(savedHistory) : [];
-      
-      const newHistory = [historyItem, ...history.filter(item => item.text !== text)];
-      localStorage.setItem('tts-history', JSON.stringify(newHistory.slice(0, 200)));
+
+      const savedHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
+      const history = savedHistory ? JSON.parse(savedHistory) : [];
+      const newHistory = [historyItem, ...history.filter((item) => item.text !== text)];
+      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(newHistory.slice(0, MAX_HISTORY)));
+      window.dispatchEvent(new Event('tts-history-changed'));
     } catch (error) {
       console.error('History save error:', error);
     }
   }, [speechRate, selectedVoice]);
 
-  // Settings handlers
+  const finishReading = useCallback(() => {
+    setIsSpeaking(false);
+    setIsPaused(false);
+    isPlayingRef.current = false;
+    setProgress(100);
+    setCurrentWord('');
+    setCurrentSentence('');
+
+    const totalTime = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : 0;
+    setReadingStats((prev) => {
+      const newStats = {
+        ...prev,
+        totalReadTime: prev.totalReadTime + totalTime,
+        sessionsCompleted: prev.sessionsCompleted + 1
+      };
+      localStorage.setItem(STORAGE_KEYS.READING_STATS, JSON.stringify(newStats));
+      return newStats;
+    });
+
+    if (currentText) addToHistory(currentText, totalTime);
+    setCurrentText('');
+    clearSession();
+  }, [currentText, addToHistory, clearSession]);
+
+  const createUtterance = useCallback((sentence) => {
+    const utterance = new SpeechSynthesisUtterance(sentence);
+    utterance.rate = speechRate;
+    utterance.lang = selectedVoice?.lang || 'tr-TR';
+    utterance.volume = 1;
+    utterance.pitch = 1;
+    if (selectedVoice) utterance.voice = selectedVoice;
+    return utterance;
+  }, [speechRate, selectedVoice]);
+
+  const speakSentenceAt = useCallback((index) => {
+    const sentences = sentencesRef.current;
+    if (index < 0 || index >= sentences.length) return;
+
+    window.speechSynthesis.cancel();
+    sentenceIndexRef.current = index;
+    setCurrentSentenceIndex(index);
+    setCurrentSentence(sentences[index]);
+    setCurrentWord('');
+    setWordStart(0);
+    setWordEnd(0);
+
+    const utterance = createUtterance(sentences[index]);
+
+    utterance.onstart = () => {
+      setIsLoading(false);
+      setIsSpeaking(true);
+      setIsPaused(false);
+      isPlayingRef.current = true;
+      if (!startTimeRef.current) startTimeRef.current = Date.now();
+    };
+
+    utterance.onboundary = (event) => {
+      if (event.name === 'word') {
+        const sentence = sentences[index];
+        setCurrentWord(sentence.substring(event.charIndex, event.charIndex + event.charLength));
+        setWordStart(event.charIndex);
+        setWordEnd(event.charIndex + event.charLength);
+      }
+    };
+
+    utterance.onend = () => {
+      if (!isPlayingRef.current) return;
+      const nextIndex = sentenceIndexRef.current + 1;
+      if (nextIndex < sentences.length) {
+        speakSentenceAtRef.current?.(nextIndex);
+      } else {
+        finishReading();
+      }
+    };
+
+    utterance.onerror = (event) => {
+      const errorType = event.error || 'unknown';
+      if (errorType === 'interrupted' || errorType === 'canceled') {
+        handleError(new Error(errorType), 'speech');
+      } else if (errorType === 'not-allowed') {
+        handleError(new Error('Ses iznine ihtiyaç var.'), 'speech');
+      } else {
+        handleError(new Error(`Speech error: ${errorType}`), 'speech');
+      }
+    };
+
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  }, [createUtterance, finishReading, handleError]);
+
+  speakSentenceAtRef.current = speakSentenceAt;
+
+  const speak = useCallback((text, startIndex = 0) => {
+    try {
+      setIsLoading(true);
+      setLastError(null);
+
+      if (!('speechSynthesis' in window)) {
+        throw new Error('Tarayıcınız sesli okuma desteklemiyor.');
+      }
+
+      const processedInput = validateText(text);
+      const sentences = splitIntoSentences(processedInput);
+      if (!sentences.length) throw new Error('Okunacak cümle bulunamadı.');
+
+      window.speechSynthesis.cancel();
+      sentencesRef.current = sentences;
+      sentenceIndexRef.current = startIndex;
+      setCurrentText(processedInput);
+      setTotalSentences(sentences.length);
+      setProgress(0);
+      setElapsedTime(0);
+      pausedTimeRef.current = 0;
+      startTimeRef.current = Date.now();
+      isPlayingRef.current = true;
+
+      saveSession(processedInput, startIndex, 0);
+      speakSentenceAt(startIndex);
+    } catch (error) {
+      setIsLoading(false);
+      handleError(error, 'speak');
+      throw error;
+    }
+  }, [validateText, saveSession, speakSentenceAt, handleError]);
+
+  const pause = useCallback(() => {
+    if (isSpeaking && !isPaused) {
+      try {
+        window.speechSynthesis.pause();
+        setIsPaused(true);
+        isPlayingRef.current = false;
+        const elapsed = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
+        pausedTimeRef.current = elapsed;
+        saveSession(currentText, sentenceIndexRef.current, elapsed);
+      } catch (error) {
+        handleError(error, 'pause');
+      }
+    }
+  }, [isSpeaking, isPaused, currentText, saveSession, handleError]);
+
+  const resume = useCallback(() => {
+    if (!currentText) return;
+
+    try {
+      setLastError(null);
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+        setIsPaused(false);
+        isPlayingRef.current = true;
+        startTimeRef.current = Date.now() - pausedTimeRef.current;
+      } else {
+        // Restart from saved sentence index after interruption
+        setIsPaused(false);
+        isPlayingRef.current = true;
+        startTimeRef.current = Date.now() - pausedTimeRef.current;
+        speakSentenceAt(sentenceIndexRef.current);
+      }
+    } catch (error) {
+      setIsPaused(false);
+      isPlayingRef.current = true;
+      window.speechSynthesis.cancel();
+      setTimeout(() => speakSentenceAt(sentenceIndexRef.current), 100);
+    }
+  }, [currentText, speakSentenceAt]);
+
+  const stop = useCallback(() => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+    setIsPaused(false);
+    isPlayingRef.current = false;
+    setProgress(0);
+    setElapsedTime(0);
+    setEstimatedTime(0);
+    setCurrentText('');
+    setCurrentSentence('');
+    setCurrentWord('');
+    setLastError(null);
+    sentencesRef.current = [];
+    clearSession();
+  }, [clearSession]);
+
+  const goToPreviousSentence = useCallback(() => {
+    if (sentenceIndexRef.current <= 0) return;
+    const wasPlaying = isSpeaking && !isPaused;
+    window.speechSynthesis.cancel();
+    const newIndex = sentenceIndexRef.current - 1;
+    if (wasPlaying) {
+      isPlayingRef.current = true;
+      speakSentenceAt(newIndex);
+    } else {
+      sentenceIndexRef.current = newIndex;
+      setCurrentSentenceIndex(newIndex);
+      setCurrentSentence(sentencesRef.current[newIndex] || '');
+      saveSession(currentText, newIndex, pausedTimeRef.current);
+    }
+  }, [isSpeaking, isPaused, currentText, speakSentenceAt, saveSession]);
+
+  const goToNextSentence = useCallback(() => {
+    if (sentenceIndexRef.current >= sentencesRef.current.length - 1) return;
+    const wasPlaying = isSpeaking && !isPaused;
+    window.speechSynthesis.cancel();
+    const newIndex = sentenceIndexRef.current + 1;
+    if (wasPlaying) {
+      isPlayingRef.current = true;
+      speakSentenceAt(newIndex);
+    } else {
+      sentenceIndexRef.current = newIndex;
+      setCurrentSentenceIndex(newIndex);
+      setCurrentSentence(sentencesRef.current[newIndex] || '');
+      saveSession(currentText, newIndex, pausedTimeRef.current);
+    }
+  }, [isSpeaking, isPaused, currentText, speakSentenceAt, saveSession]);
+
+  const loadPausedSession = useCallback(() => {
+    try {
+      const savedText = localStorage.getItem(STORAGE_KEYS.CURRENT_TEXT);
+      const sessionTs = localStorage.getItem(STORAGE_KEYS.SESSION_TIMESTAMP);
+      const savedIndex = localStorage.getItem(STORAGE_KEYS.SENTENCE_INDEX);
+      const savedElapsed = localStorage.getItem(STORAGE_KEYS.PAUSED_ELAPSED);
+
+      if (savedText && sessionTs) {
+        const timestamp = parseInt(sessionTs, 10);
+        if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+          const sentences = splitIntoSentences(savedText);
+          const index = savedIndex ? parseInt(savedIndex, 10) : 0;
+
+          sentencesRef.current = sentences;
+          sentenceIndexRef.current = index;
+          pausedTimeRef.current = savedElapsed ? parseInt(savedElapsed, 10) : 0;
+
+          setCurrentText(savedText);
+          setTotalSentences(sentences.length);
+          setCurrentSentenceIndex(index);
+          setCurrentSentence(sentences[index] || '');
+          setIsPaused(true);
+
+          return { text: savedText, hasSession: true, sentenceIndex: index };
+        }
+        clearSession();
+      }
+    } catch (error) {
+      console.error('Session load error:', error);
+    }
+    return { hasSession: false };
+  }, [clearSession]);
+
+  const loadAutoSavedText = useCallback(() => {
+    try {
+      const autoSavedText = localStorage.getItem(STORAGE_KEYS.AUTO_SAVED_TEXT);
+      const timestamp = localStorage.getItem(STORAGE_KEYS.AUTO_SAVE_TIMESTAMP);
+      if (autoSavedText && timestamp) {
+        const saveTime = parseInt(timestamp, 10);
+        if (Date.now() - saveTime < 7 * 24 * 60 * 60 * 1000) {
+          return { text: autoSavedText, timestamp: saveTime };
+        }
+      }
+    } catch (error) {
+      console.error('Auto-save load error:', error);
+    }
+    return null;
+  }, []);
+
   const selectVoice = useCallback((voice) => {
     setSelectedVoice(voice);
     if (voice) {
-      localStorage.setItem('tts-selected-voice', JSON.stringify({
-        name: voice.name,
-        lang: voice.lang
-      }));
+      localStorage.setItem(STORAGE_KEYS.SELECTED_VOICE, JSON.stringify({ name: voice.name, lang: voice.lang }));
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_VOICE);
     }
+    window.dispatchEvent(new Event('tts-settings-changed'));
   }, []);
 
   const changeRate = useCallback((rate) => {
     if (rate >= 0.5 && rate <= 2.0) {
       setSpeechRate(rate);
-      localStorage.setItem('tts-speech-rate', rate.toString());
+      localStorage.setItem(STORAGE_KEYS.SPEECH_RATE, rate.toString());
+      window.dispatchEvent(new Event('tts-settings-changed'));
     }
   }, []);
 
-  // Cleanup
   useEffect(() => {
     return () => {
       if (utteranceRef.current) window.speechSynthesis.cancel();
@@ -561,15 +522,12 @@ export const useSpeechSynthesis = () => {
   }, []);
 
   return {
-    // Core state
     isSpeaking,
     isPaused,
     currentText,
     speechRate,
     selectedVoice,
     voices,
-    
-    // Enhanced tracking
     progress,
     elapsedTime,
     estimatedTime,
@@ -577,8 +535,12 @@ export const useSpeechSynthesis = () => {
     lastError,
     readingStats,
     processedText,
-    
-    // Actions
+    currentSentenceIndex,
+    totalSentences,
+    currentSentence,
+    currentWord,
+    wordStart,
+    wordEnd,
     speak,
     pause,
     resume,
@@ -586,17 +548,13 @@ export const useSpeechSynthesis = () => {
     selectVoice,
     changeRate,
     autoSave,
-    
-    // Session management
+    goToPreviousSentence,
+    goToNextSentence,
     loadPausedSession,
     loadAutoSavedText,
-    
-    // Computed
     hasActiveSession: isSpeaking || isPaused,
-    canResume: isPaused && currentText,
+    canResume: isPaused && !!currentText,
     isReady: !isLoading && voices.length > 0,
-    
-    // Utilities
     clearError: () => setLastError(null)
   };
-}; 
+};

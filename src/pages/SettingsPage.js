@@ -4,6 +4,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTranslation } from '../translations';
 import Header from '../components/Header/Header';
+import { STORAGE_KEYS } from '../constants';
 import { FaArrowLeft, FaSun, FaMoon, FaTrash, FaChevronRight } from 'react-icons/fa';
 import './SettingsPage.css';
 
@@ -31,13 +32,10 @@ const SettingsPage = () => {
       setVoices(availableVoices);
 
       // Load speech rate
-      const savedRate = localStorage.getItem('tts-speech-rate');
-      if (savedRate) {
-        setSpeechRate(parseFloat(savedRate));
-      }
+      const savedRate = localStorage.getItem(STORAGE_KEYS.SPEECH_RATE);
+      if (savedRate) setSpeechRate(parseFloat(savedRate));
 
-      // Load selected voice
-      const savedVoice = localStorage.getItem('tts-selected-voice');
+      const savedVoice = localStorage.getItem(STORAGE_KEYS.SELECTED_VOICE);
       if (savedVoice && availableVoices.length > 0) {
         try {
           const voiceData = JSON.parse(savedVoice);
@@ -72,51 +70,37 @@ const SettingsPage = () => {
   const handleVoiceSelect = (voice) => {
     setSelectedVoice(voice);
     if (voice) {
-      localStorage.setItem('tts-selected-voice', JSON.stringify({
-        name: voice.name,
-        lang: voice.lang
-      }));
+      localStorage.setItem(STORAGE_KEYS.SELECTED_VOICE, JSON.stringify({ name: voice.name, lang: voice.lang }));
     } else {
-      localStorage.removeItem('tts-selected-voice');
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_VOICE);
     }
     setShowVoiceDropdown(false);
+    window.dispatchEvent(new Event('tts-settings-changed'));
   };
 
   const handleSpeedChange = (newRate) => {
     setSpeechRate(newRate);
-    localStorage.setItem('tts-speech-rate', newRate.toString());
+    localStorage.setItem(STORAGE_KEYS.SPEECH_RATE, newRate.toString());
     setShowSpeedDropdown(false);
+    window.dispatchEvent(new Event('tts-settings-changed'));
   };
 
   const getVoiceDisplayName = (voice) => {
-    if (!voice) return 'Varsayılan Ses';
+    if (!voice) return t('voiceSelector.defaultVoice');
     return `${voice.name} (${voice.lang})`;
   };
 
-  const getSpeedLabel = (rate) => {
-    const speedLabels = {
-      0.5: '0.5x - Çok Yavaş',
-      0.75: '0.75x - Yavaş',
-      1.0: '1.0x - Normal',
-      1.25: '1.25x - Hızlı',
-      1.5: '1.5x - Çok Hızlı',
-      1.75: '1.75x - Ultra Hızlı',
-      2.0: '2.0x - Maksimum'
-    };
-    return speedLabels[rate] || `${rate}x`;
-  };
+  const getSpeedLabel = (rate) => t(`home.speedOptions.${rate}`) || `${rate}x`;
 
   const clearAllData = () => {
-    if (window.confirm('Tüm veriler silinecek. Emin misiniz?')) {
-      localStorage.removeItem('tts-history');
-      localStorage.removeItem('tts-speech-rate');
-      localStorage.removeItem('tts-selected-voice');
-      localStorage.removeItem('tts-current-text');
-      localStorage.removeItem('tts-paused-time');
+    if (window.confirm(t('settings.confirmClearData'))) {
+      Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
       localStorage.removeItem('tts-language');
       setSpeechRate(1.0);
       setSelectedVoice(null);
-      alert('Tüm veriler temizlendi.');
+      window.dispatchEvent(new Event('tts-settings-changed'));
+      window.dispatchEvent(new Event('tts-history-changed'));
+      alert(t('settings.dataCleared'));
     }
   };
 
@@ -129,25 +113,22 @@ const SettingsPage = () => {
           <button 
             onClick={() => navigate('/')}
             className="back-button"
-            aria-label="Ana sayfaya dön"
+            aria-label={t('nav.home')}
           >
             <FaArrowLeft />
           </button>
-          <h1 className="page-title">⚙️ Ayarlar</h1>
+          <h1 className="page-title">⚙️ {t('settings.title')}</h1>
         </div>
 
         <div className="settings-content">
           
           {/* Theme Settings */}
           <div className="setting-section">
-            <h3 className="section-title">🎨 Tema Ayarları</h3>
+            <h3 className="section-title">🎨 {t('settings.themeSelection')}</h3>
             <div className="theme-buttons">
-              <button
-                onClick={toggleTheme}
-                className={`theme-button ${isDarkMode ? 'active' : ''}`}
-              >
+              <button onClick={toggleTheme} className={`theme-button ${isDarkMode ? 'active' : ''}`}>
                 <FaMoon className="theme-icon" />
-                <span>Koyu Tema</span>
+                <span>{t('settings.dark')}</span>
                 {isDarkMode && <span className="active-indicator">✓</span>}
               </button>
               <button
@@ -155,7 +136,7 @@ const SettingsPage = () => {
                 className={`theme-button ${!isDarkMode ? 'active' : ''}`}
               >
                 <FaSun className="theme-icon" />
-                <span>Açık Tema</span>
+                <span>{t('settings.light')}</span>
                 {!isDarkMode && <span className="active-indicator">✓</span>}
               </button>
             </div>
@@ -163,20 +144,20 @@ const SettingsPage = () => {
 
           {/* Language Settings */}
           <div className="setting-section">
-            <h3 className="section-title">🌐 Dil Ayarları</h3>
+            <h3 className="section-title">🌐 {t('settings.languageSelection')}</h3>
             <div className="language-buttons">
               <button
                 onClick={() => changeLanguage('tr')}
                 className={`language-button ${currentLanguage === 'tr' ? 'active' : ''}`}
               >
-                🇹🇷 Türkçe
+                🇹🇷 {t('settings.turkish')}
                 {currentLanguage === 'tr' && <span className="active-indicator">✓</span>}
               </button>
               <button
                 onClick={() => changeLanguage('en')}
                 className={`language-button ${currentLanguage === 'en' ? 'active' : ''}`}
               >
-                🇺🇸 English
+                🇺🇸 {t('settings.english')}
                 {currentLanguage === 'en' && <span className="active-indicator">✓</span>}
               </button>
             </div>
@@ -184,14 +165,14 @@ const SettingsPage = () => {
 
           {/* Voice Settings */}
           <div className="setting-section">
-            <h3 className="section-title">🎤 Ses Ayarları</h3>
+            <h3 className="section-title">🎤 {t('settings.voiceSettings')}</h3>
             <div className="dropdown-container">
               <div 
                 onClick={() => setShowVoiceDropdown(!showVoiceDropdown)}
                 className="dropdown-trigger"
               >
                 <div className="dropdown-content">
-                  <div className="dropdown-label">Seçili Ses</div>
+                  <div className="dropdown-label">{t('settings.selectedVoice')}</div>
                   <div className="dropdown-value">{getVoiceDisplayName(selectedVoice)}</div>
                 </div>
                 <FaChevronRight className={`dropdown-arrow ${showVoiceDropdown ? 'open' : ''}`} />
@@ -203,7 +184,7 @@ const SettingsPage = () => {
                     onClick={() => handleVoiceSelect(null)}
                     className={`dropdown-item ${!selectedVoice ? 'active' : ''}`}
                   >
-                    Varsayılan Ses
+                    {t('voiceSelector.defaultVoice')}
                   </div>
                   {voices.map((voice, index) => (
                     <div
@@ -221,14 +202,14 @@ const SettingsPage = () => {
 
           {/* Speed Settings */}
           <div className="setting-section">
-            <h3 className="section-title">⚡ Hız Ayarları</h3>
+            <h3 className="section-title">⚡ {t('settings.readingSpeed')}</h3>
             <div className="dropdown-container">
               <div 
                 onClick={() => setShowSpeedDropdown(!showSpeedDropdown)}
                 className="dropdown-trigger"
               >
                 <div className="dropdown-content">
-                  <div className="dropdown-label">Okuma Hızı</div>
+                  <div className="dropdown-label">{t('settings.readingSpeed')}</div>
                   <div className="dropdown-value">{getSpeedLabel(speechRate)}</div>
                 </div>
                 <FaChevronRight className={`dropdown-arrow ${showSpeedDropdown ? 'open' : ''}`} />
@@ -252,17 +233,12 @@ const SettingsPage = () => {
 
           {/* Data Management */}
           <div className="setting-section">
-            <h3 className="section-title">🗂️ Veri Yönetimi</h3>
-            <button
-              onClick={clearAllData}
-              className="danger-button"
-            >
+            <h3 className="section-title">🗂️ {t('settings.dataManagement')}</h3>
+            <button onClick={clearAllData} className="danger-button">
               <FaTrash className="button-icon" />
-              <span>Tüm Verileri Temizle</span>
+              <span>{t('settings.clearAllData')}</span>
             </button>
-            <p className="danger-description">
-              Bu işlem tüm geçmiş kayıtlarınızı, ayarlarınızı ve duraklatılmış okuma oturumunuzu kalıcı olarak siler.
-            </p>
+            <p className="danger-description">{t('settings.clearDataWarning')}</p>
           </div>
 
         </div>

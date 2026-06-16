@@ -119,6 +119,7 @@ export const translations = {
       version: 'Sürüm',
       developer: 'Geliştirici',
       confirmClearData: 'Tüm veriler silinecek. Emin misiniz?',
+      clearDataWarning: 'Bu işlem tüm geçmiş kayıtlarınızı, ayarlarınızı ve duraklatılmış okuma oturumunuzu kalıcı olarak siler.',
       dataCleared: 'Tüm veriler temizlendi.',
       dataExported: 'Veriler dışa aktarıldı.',
       dataImported: 'Veriler içe aktarıldı.'
@@ -146,7 +147,49 @@ export const translations = {
       error: 'Hata',
       success: 'Başarılı',
       loading: 'Yükleniyor...',
-      default: 'Varsayılan'
+      default: 'Varsayılan',
+      preparing: 'Hazırlanıyor...',
+      enterTextFirst: 'Metin girin',
+      closeError: 'Hatayı kapat',
+      minutes: 'dk',
+      words: 'kelime'
+    },
+
+    // Home page
+    home: {
+      inputLabel: 'Metninizi buraya yazın veya yapıştırın',
+      inputPlaceholder: 'İpucu: Metniniz yazarken otomatik kaydedilir...',
+      autoSaved: 'Metin otomatik kaydedildi',
+      textStats: 'Metin istatistikleri',
+      clearText: 'Metni temizle',
+      wordCount: 'Kelime',
+      charCount: 'Karakter',
+      estimatedTime: 'Tahmini süre',
+      atSpeed: 'Hız ile',
+      voiceLabel: 'Ses Seçimi',
+      speedLabel: 'Hız',
+      statusPreparing: 'Hazırlanıyor...',
+      statusPaused: 'Duraklatıldı',
+      statusSpeaking: 'Okunuyor...',
+      timeRemaining: 'kaldı',
+      readingStats: 'Okuma İstatistikleri',
+      completed: 'Tamamlanan',
+      totalTime: 'Toplam Süre',
+      resumeTitle: 'Kaldığınız Yerden Devam Edin',
+      resumeButton: 'Devam Et',
+      dismissButton: 'Kapat',
+      speedOptions: {
+        '0.5': '0.5x - Çok Yavaş',
+        '0.75': '0.75x - Yavaş',
+        '1': '1.0x - Normal',
+        '1.25': '1.25x - Hızlı',
+        '1.5': '1.5x - Çok Hızlı',
+        '1.75': '1.75x - Ultra Hızlı',
+        '2': '2.0x - Maksimum'
+      },
+      tip: 'İpucu: Metin okurken diğer sekmelere geçebilirsiniz',
+      speakTitle: 'Metni sesli okumaya başla',
+      writeFirst: 'Önce bir metin yazın'
     }
   },
   
@@ -269,6 +312,7 @@ export const translations = {
       version: 'Version',
       developer: 'Developer',
       confirmClearData: 'All data will be deleted. Are you sure?',
+      clearDataWarning: 'This permanently deletes all history, settings, and paused reading sessions.',
       dataCleared: 'All data cleared.',
       dataExported: 'Data exported.',
       dataImported: 'Data imported.'
@@ -296,7 +340,49 @@ export const translations = {
       error: 'Error',
       success: 'Success',
       loading: 'Loading...',
-      default: 'Default'
+      default: 'Default',
+      preparing: 'Preparing...',
+      enterTextFirst: 'Enter text',
+      closeError: 'Close error',
+      minutes: 'min',
+      words: 'words'
+    },
+
+    // Home page
+    home: {
+      inputLabel: 'Write or paste your text here',
+      inputPlaceholder: 'Tip: Your text is auto-saved as you type...',
+      autoSaved: 'Text auto-saved',
+      textStats: 'Text statistics',
+      clearText: 'Clear text',
+      wordCount: 'Words',
+      charCount: 'Characters',
+      estimatedTime: 'Estimated time',
+      atSpeed: 'At speed',
+      voiceLabel: 'Voice Selection',
+      speedLabel: 'Speed',
+      statusPreparing: 'Preparing...',
+      statusPaused: 'Paused',
+      statusSpeaking: 'Reading...',
+      timeRemaining: 'remaining',
+      readingStats: 'Reading Statistics',
+      completed: 'Completed',
+      totalTime: 'Total Time',
+      resumeTitle: 'Resume Where You Left Off',
+      resumeButton: 'Resume',
+      dismissButton: 'Dismiss',
+      speedOptions: {
+        '0.5': '0.5x - Very Slow',
+        '0.75': '0.75x - Slow',
+        '1': '1.0x - Normal',
+        '1.25': '1.25x - Fast',
+        '1.5': '1.5x - Very Fast',
+        '1.75': '1.75x - Ultra Fast',
+        '2': '2.0x - Maximum'
+      },
+      tip: 'Tip: You can switch tabs while text is being read',
+      speakTitle: 'Start reading text aloud',
+      writeFirst: 'Write some text first'
     }
   }
 };
