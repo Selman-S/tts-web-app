@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { MAX_HISTORY, STORAGE_KEYS } from '../constants';
 import { splitIntoSentences, analyzeText } from '../utils/textUtils';
+import { useWakeLock } from './useWakeLock';
 
 /**
  * Speech synthesis hook with sentence navigation and word highlighting
@@ -44,6 +45,9 @@ export const useSpeechSynthesis = () => {
   const speakSentenceAtRef = useRef(null);
 
   const processedText = analyzeText(currentText, speechRate);
+
+  // Prevent screen dimming on mobile while reading (play or pause)
+  useWakeLock(isSpeaking || isLoading);
 
   // Load voices on mount
   useEffect(() => {
